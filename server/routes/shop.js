@@ -9,6 +9,12 @@ const { requireAuth, requireRank } = require('../middleware/auth');
 const site = require('../../config/site');
 
 router.use(requireAuth, requireRank('shop'));
+router.use((req, res, next) => {
+  if (req.user && req.user.rank === 'member') {
+    return res.status(403).json({ error: site.strings.errors.forbidden, code: 'FORBIDDEN' });
+  }
+  return next();
+});
 
 function requireShopDuty(req, res, next) {
   if (!rolesSvc.hasShopDuty(req.user)) {
