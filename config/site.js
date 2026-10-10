@@ -53,6 +53,7 @@ module.exports = {
 
   nav: [
     { id: 'dashboard', hash: '#/dashboard', label: 'لوحة القيادة', icon: 'grid', minRank: 2 },
+    { id: 'card', hash: '#/card', label: 'بطاقتي', icon: 'user', minRank: 2 },
     { id: 'shop', hash: '#/shop', label: 'المتجر', icon: 'bag', minRank: 1 },
     { id: 'orders', hash: '#/orders', label: 'الطلبات', icon: 'receipt', minRank: 1 },
     { id: 'attendance', hash: '#/attendance', label: 'الدوام', icon: 'clock', minRank: 2 },
