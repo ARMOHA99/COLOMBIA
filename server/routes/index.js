@@ -16,6 +16,7 @@ router.get(
       runtime = {
         siteName: s.siteName,
         siteTagline: s.siteTagline,
+        logoUrl: s.logoUrl || '',
         motd: s.motd,
         lockoutEnabled: s.lockoutEnabled,
         lockoutStart: s.lockoutStart,
