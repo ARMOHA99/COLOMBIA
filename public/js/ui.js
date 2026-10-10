@@ -258,3 +258,19 @@ export function segTabs(tabs, activeId, onPick) {
   }
   return wrap;
 }
+export function applyBrandLogo(url) {
+  document.querySelectorAll('.brand-mark, .login-logo, .boot-mark').forEach((el) => {
+    if (!el.dataset.initials) el.dataset.initials = el.textContent;
+    el.textContent = '';
+    if (url) {
+      el.classList.add('has-logo');
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      el.appendChild(img);
+    } else {
+      el.classList.remove('has-logo');
+      el.textContent = el.dataset.initials;
+    }
+  });
+}
