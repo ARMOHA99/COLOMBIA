@@ -11,6 +11,8 @@ const operationSchema = new mongoose.Schema(
     result: { type: String, enum: ['win', 'loss', 'pending'], default: 'pending', index: true },
     participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     notes: { type: String, default: '', maxlength: 1000 },
+    winAmount: { type: Number, default: 0, min: 0 },
+    lossAmount: { type: Number, default: 0, min: 0 },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
   },
