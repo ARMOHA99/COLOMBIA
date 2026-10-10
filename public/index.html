@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="description" content="COLOMBIA PORTAL" />
+    <title>Colombia Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a0a0a'/%3E%3Ctext x='32' y='42' font-size='30' font-family='Arial' font-weight='bold' fill='%23d4af37' text-anchor='middle'%3ECO%3C/text%3E%3C/svg%3E" />
+    <script type="importmap">
+      { "imports": { "three": "/vendor/three.module.js" } }
+    </script>
+  </head>
+  <body>
+    <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+    <div id="boot" class="boot">
+      <div class="boot-mark">CO</div>
+      <div class="boot-ring"></div>
+      <div class="boot-text">جارٍ تهيئة البوابة...</div>
+    </div>
+
+    <div id="login-root" class="login-root" hidden></div>
+
+    <div id="app" class="app" hidden>
+      <header class="topbar glass">
+        <button id="menu-btn" class="icon-btn" aria-label="القائمة"></button>
+        <div class="brand">
+          <div class="brand-mark" id="brand-mark">CO</div>
+          <div class="brand-text">
+            <strong id="brand-name">Colombia</strong>
+            <span id="brand-tag">بوابة المنظمة</span>
+          </div>
+        </div>
+        <div class="topbar-title" id="page-title"></div>
+        <div class="topbar-actions">
+          <div id="live-dot" class="live-dot" title="الاتصال المباشر"></div>
+          <button id="user-chip" class="user-chip glass"></button>
+        </div>
+      </header>
+
+      <aside id="drawer" class="drawer glass">
+        <nav id="nav-list" class="nav-list"></nav>
+        <div class="drawer-footer">
+          <div id="drawer-user" class="drawer-user"></div>
+          <button id="logout-btn" class="btn btn-ghost btn-block"></button>
+        </div>
+      </aside>
+      <div id="scrim" class="scrim" hidden></div>
+
+      <main id="view" class="view"></main>
+    </div>
+
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+    <div id="modal-root"></div>
+
+    <script type="module" src="/js/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,447 @@
+'use strict';
+
+/**
+ * الملف المركزي لإعادة تسمية المنصة وتغيير نصوص الواجهة.
+ * غيّر القيم هنا فقط — كل النصوص في الخادم والواجهة تُسحب من هذا الملف تلقائياً عبر /api/site
+ */
+module.exports = {
+  version: '1.0.0',
+
+  org: {
+    name: 'Colombia',
+    nameAr: 'كولومبيا',
+    initials: 'CO',
+    tagline: 'بوابة المنظمة | عالم GTA Roleplay',
+    motd: 'وحدة، انضباط، ونتيجة. أهلاً بكم في البوابة الرسمية.'
+  },
+
+  locale: {
+    lang: 'ar',
+    dir: 'rtl',
+    timezone: 'Africa/Algiers',
+    dateLocale: 'ar-DZ',
+    currency: '$',
+    currencyLabel: 'دولار'
+  },
+
+  theme: {
+    base: '#0a0a0a',
+    surface: '#111214',
+    surfaceAlt: '#16181c',
+    gold: '#d4af37',
+    goldSoft: '#f0d67a',
+    goldDeep: '#8a6d1f',
+    emerald: '#10b981',
+    emeraldDeep: '#059669',
+    danger: '#ef4444',
+    warning: '#f59e0b',
+    info: '#38bdf8',
+    text: '#e8e6e1',
+    textMuted: '#9a978f',
+    glass: 'rgba(255,255,255,0.055)',
+    glassBorder: 'rgba(212,175,55,0.16)',
+    particleColor: '#d4af37'
+  },
+
+  ranks: {
+    admin: { key: 'admin', label: 'مدير عام', order: 4, color: '#d4af37', perm: 'كل الصلاحيات' },
+    ops: { key: 'ops', label: 'ضابط', order: 3, color: '#10b981', perm: 'إدارة العمليات والمخالفات' },
+    member: { key: 'member', label: 'عضو', order: 2, color: '#38bdf8', perm: 'المنطقة الخاصة بالأعضاء' },
+    shop: { key: 'shop', label: 'متجر', order: 1, color: '#f59e0b', perm: 'المتجر وإدارة الطلبات' },
+    guest: { key: 'guest', label: 'زائر', order: 0, color: '#9a978f', perm: 'بدون صلاحيات' }
+  },
+
+  nav: [
+    { id: 'dashboard', hash: '#/dashboard', label: 'لوحة القيادة', icon: 'grid', minRank: 2 },
+    { id: 'shop', hash: '#/shop', label: 'المتجر', icon: 'bag', minRank: 1 },
+    { id: 'orders', hash: '#/orders', label: 'الطلبات', icon: 'receipt', minRank: 1 },
+    { id: 'attendance', hash: '#/attendance', label: 'الدوام', icon: 'clock', minRank: 2 },
+    { id: 'operations', hash: '#/operations', label: 'العمليات', icon: 'target', minRank: 2 },
+    { id: 'farm', hash: '#/farm', label: 'المزرعة', icon: 'leaf', minRank: 2 },
+    { id: 'treasury', hash: '#/treasury', label: 'الخزينة', icon: 'coins', minRank: 2 },
+    { id: 'internal', hash: '#/internal', label: 'المتجر الداخلي', icon: 'cart', minRank: 2 },
+    { id: 'discipline', hash: '#/discipline', label: 'سجل الانضباط', icon: 'shield', minRank: 2 },
+    { id: 'tickets', hash: '#/tickets', label: 'التذاكر', icon: 'mail', minRank: 2 },
+    { id: 'leaderboard', hash: '#/leaderboard', label: 'لوحة الشرف', icon: 'medal', minRank: 2 },
+    { id: 'admin', hash: '#/admin', label: 'لوحة الإدارة', icon: 'settings', minRank: 4 }
+  ],
+
+  routesByRank: {
+    admin: '#/admin',
+    ops: '#/dashboard',
+    member: '#/dashboard',
+    shop: '#/shop',
+    guest: null
+  },
+
+  defaults: {
+    weeklyGoal: 20,
+    lockoutEnabled: true,
+    lockoutStart: '22:00',
+    lockoutEnd: '04:00',
+    crops: [
+      { key: 'coffee', label: 'بن', targetProduct: 'حبوب البن', growMs: 45 * 60 * 1000, minQty: 2, maxQty: 5 },
+      { key: 'cocoa', label: 'كاكاو', targetProduct: 'حبوب الكاكاو', growMs: 60 * 60 * 1000, minQty: 2, maxQty: 4 },
+      { key: 'cotton', label: 'قطن', targetProduct: 'القطن', growMs: 30 * 60 * 1000, minQty: 3, maxQty: 6 }
+    ],
+    categories: ['أسلحة', 'مركبات', 'ملابس', 'أدوات', 'أخرى'],
+    operationTypes: [
+      { key: 'raid', label: 'غارة', color: '#ef4444' },
+      { key: 'heist', label: 'سرقة بنك', color: '#d4af37' },
+      { key: 'delivery', label: 'توصيل', color: '#10b981' },
+      { key: 'patrol', label: 'دورية', color: '#38bdf8' },
+      { key: 'pvp', label: 'مواجهات', color: '#f59e0b' },
+      { key: 'other', label: 'أخرى', color: '#9a978f' }
+    ],
+    treasuryCategories: ['مهن', 'عمليات', 'مساهمات', 'مشتريات', 'غرامات', 'أخرى']
+  },
+
+  statuses: {
+    order: {
+      new: 'جديد',
+      preparing: 'قيد التحضير',
+      delivered: 'تم التسليم',
+      cancelled: 'ملغي'
+    },
+    plot: {
+      empty: 'فارغة',
+      planted: 'مزروعة',
+      ready: 'جاهزة للحصاد'
+    },
+    ticket: {
+      pending: 'قيد المراجعة',
+      approved: 'مقبول',
+      rejected: 'مرفوض'
+    },
+    ticketTypes: {
+      leave: 'طلب إجازة',
+      promotion: 'طلب ترقية',
+      complaint: 'شكوى'
+    },
+    disciplineKinds: {
+      note: 'ملاحظة',
+      warning: 'تحذير',
+      fine: 'غرامة'
+    },
+    opResult: {
+      win: 'انتصار',
+      loss: 'خسارة',
+      pending: 'قيد التنفيذ'
+    }
+  },
+
+  strings: {
+    common: {
+      save: 'حفظ',
+      cancel: 'إلغاء',
+      confirm: 'تأكيد',
+      delete: 'حذف',
+      edit: 'تعديل',
+      create: 'إضافة',
+      close: 'إغلاق',
+      search: 'بحث...',
+      filter: 'تصفية',
+      all: 'الكل',
+      loading: 'جارٍ التحميل...',
+      noData: 'لا توجد بيانات لعرضها',
+      actions: 'إجراءات',
+      status: 'الحالة',
+      date: 'التاريخ',
+      time: 'الوقت',
+      name: 'الاسم',
+      notes: 'ملاحظات',
+      note: 'ملاحظة',
+      total: 'المجموع',
+      quantity: 'الكمية',
+      price: 'السعر',
+      balance: 'الرصيد',
+      required: 'هذا الحقل مطلوب',
+      back: 'رجوع',
+      refresh: 'تحديث',
+      yes: 'نعم',
+      no: 'لا',
+      success: 'تمت العملية بنجاح',
+      error: 'حدث خطأ ما، حاول مجدداً',
+      rank: 'الرتبة',
+      member: 'العضو',
+      createdBy: 'أنشأه',
+      updatedBy: 'عدّله',
+      at: 'في',
+      points: 'نقاط',
+      copy: 'نسخ',
+      copied: 'تم النسخ!',
+      goodbye: 'تسجيل الخروج'
+    },
+    auth: {
+      loginTitle: 'تسجيل الدخول',
+      loginSubtitle: 'سجّل الدخول عبر Discord للوصول إلى بوابة المنظمة',
+      loginButton: 'الدخول عبر Discord',
+      checking: 'جارٍ التحقق من الجلسة...',
+      noAccess: 'لا تملك صلاحية الوصول لهذه المنصة. تواصل مع الإدارة.',
+      kicked: 'تم إنهاء جلستك بسبب تغيّر صلاحياتك في Discord.',
+      kickedTitle: 'تم طلب الخروج',
+      sessionExpired: 'انتهت الجلسة، يرجى تسجيل الدخول مجدداً',
+      notMember: 'أنت لست عضواً في خادم المنظمة على Discord.',
+      oauthFailed: 'فشل تسجيل الدخول عبر Discord، حاول مرة أخرى.',
+      welcomeBack: 'أهلاً بعودتك',
+      loggedOut: 'تم تسجيل خروجك بنجاح',
+      relogin: 'إعادة تسجيل الدخول'
+    },
+    dashboard: {
+      title: 'لوحة القيادة',
+      welcome: 'مرحباً',
+      statsMembers: 'الأعضاء',
+      statsOpsWeek: 'عمليات هذا الأسبوع',
+      statsTarget: 'الهدف الأسبوعي',
+      statsBalance: 'رصيد الخزينة',
+      announcements: 'الإعلانات',
+      latestOps: 'آخر العمليات',
+      quickActions: 'إجراءات سريعة',
+      targetRing: 'تقدم الهدف الأسبوعي',
+      dutyStatus: 'حالة الدوام',
+      onDuty: 'على رأس العمل',
+      offDuty: 'خارج الخدمة'
+    },
+    shop: {
+      title: 'المتجر',
+      subtitle: 'اختر منتجاتك وأرسل طلبك مباشرة',
+      addToCart: 'أضف للسلة',
+      cart: 'سلة المشتريات',
+      cartEmpty: 'سلتك فارغة',
+      checkout: 'إتمام الطلب',
+      orderNow: 'اطلب الآن',
+      inGameId: 'الرقم الداخلي داخل اللعبة',
+      inGameIdPlaceholder: 'مثال: 1024',
+      orderNote: 'ملاحظات للطلب (اختياري)',
+      orderNotePlaceholder: 'أي تفاصيل إضافية...',
+      orderSent: 'تم إرسال طلبك بنجاح، ستتلقى تحديثات مباشرة',
+      outOfStock: 'نفذ',
+      stock: 'المخزون',
+      unitPrice: 'سعر الوحدة',
+      preview3d: 'معاينة ثلاثية الأبعاد',
+      rotateHint: 'اسحب للتدوير • عجلة الفأرة للتقريب',
+      categories: 'الأقسام',
+      itemsInCart: 'عناصر في السلة',
+      totalToPay: 'الإجمالي',
+      emptyCategory: 'لا توجد منتجات في هذا القسم',
+      clearCart: 'تفريغ السلة'
+    },
+    orders: {
+      title: 'الطلبات',
+      myOrders: 'طلباتي',
+      allOrders: 'كل الطلبات',
+      noOrders: 'لا توجد طلبات بعد',
+      items: 'المنتجات',
+      timeline: 'مسار الطلب',
+      setStatus: 'تحديث الحالة',
+      product: 'المنتج',
+      buyer: 'المشتري',
+      cancelOrder: 'إلغاء الطلب',
+      cancelConfirm: 'هل تريد إلغاء هذا الطلب؟',
+      liveUpdates: 'تحديثات مباشرة عبر السوكت'
+    },
+    attendance: {
+      title: 'الدوام والحضور',
+      clockIn: 'بدء الدوام',
+      clockOut: 'إنهاء الدوام',
+      onDuty: 'أنت الآن على رأس العمل',
+      dutySince: 'بدأ الدوام منذ',
+      todayMinutes: 'دقائق اليوم',
+      weekMinutes: 'دقائق هذا الأسبوع',
+      sessions: 'سجل الدوام',
+      roster: 'على رأس العمل الآن',
+      lockout: 'قفل الدوام الليلي',
+      lockoutActive: 'الدوام مقفول حالياً (ليل)',
+      lockoutFrom: 'من',
+      lockoutTo: 'إلى',
+      blocked: 'لا يمكن بدء الدوام خلال فترة القفل الليلي',
+      noSessions: 'لا يوجد سجل دوام بعد',
+      duration: 'المدة'
+    },
+    operations: {
+      title: 'غرفة العمليات',
+      create: 'إنشاء عملية',
+      edit: 'تعديل العملية',
+      deleteConfirm: 'هل تريد حذف هذه العملية؟',
+      type: 'نوع العملية',
+      result: 'النتيجة',
+      participants: 'المشاركون',
+      selectParticipants: 'اختر المشاركين',
+      noOps: 'لا توجد عمليات مسجلة',
+      winHint: 'الانتصار يضيف نقطة للهدف الأسبوعي، والخسارة يطرحها (لا ينقص عن صفر)',
+      readOnly: 'عرض فقط — لا تملك صلاحية التعديل',
+      feed: 'سجل العمليات'
+    },
+    target: {
+      title: 'الهدف الأسبوعي',
+      progress: 'نسبة الإنجاز',
+      remaining: 'المتبقي',
+      goal: 'الهدف',
+      completed: 'اكتمل الهدف الأسبوعي! 🎉',
+      glowing: 'قتربنا من الاكتمال!',
+      resetInfo: 'يُعاد الضبط تلقائياً كل يوم اثنين',
+      history: 'الأهداف السابقة',
+      noHistory: 'لا يوجد أرشيف بعد',
+      weekOf: 'أسبوع'
+    },
+    farm: {
+      title: 'المزرعة',
+      plots: 'البقع',
+      plant: 'زراعة',
+      harvest: 'حصاد',
+      reset: 'تفريغ',
+      crop: 'المحصول',
+      chooseCrop: 'اختر المحصول',
+      plantedAt: 'زُرعت في',
+      readyIn: 'جاهزة خلال',
+      readyNow: 'جاهزة للحصاد!',
+      growProgress: 'نمو المحصول',
+      harvestLogs: 'سجل الحصاد',
+      noLogs: 'لا يوجد حصاد مسجل',
+      autoSync: 'يتم رفع المحصول تلقائياً إلى مخزون المتجر',
+      yield: 'الكمية المحصودة',
+      addPlot: 'إضافة بقعة',
+      plot: 'بقعة'
+    },
+    treasury: {
+      title: 'الخزينة',
+      balance: 'الرصيد الحالي',
+      income: 'الدخل',
+      expense: 'المصروف',
+      addEntry: 'قيد جديد',
+      entryType: 'نوع القيد',
+      category: 'التصنيف',
+      amount: 'المبلغ',
+      reason: 'السبب / الوصف',
+      ledger: 'دفتر الحسابات',
+      chart: 'حركة الخزينة',
+      deleteConfirm: 'هل تريد حذف هذا القيد؟',
+      noEntries: 'لا توجد قيود بعد',
+      summary: 'ملخص مالي'
+    },
+    discipline: {
+      title: 'سجل الانضباط',
+      mine: 'سجلك',
+      all: 'سجلات الأعضاء',
+      addNote: 'إضافة قيد',
+      kind: 'النوع',
+      fineAmount: 'مبلغ الغرامة',
+      fineDeductHint: 'سيتم خصم المبلغ من رصيد العضو تلقائياً',
+      noRecords: 'لا توجد مخالفات مسجلة',
+      issuedBy: 'صدرت بواسطة'
+    },
+    tickets: {
+      title: 'التذاكر والطلبات',
+      create: 'فتح تذكرة',
+      type: 'نوع الطلب',
+      message: 'التفاصيل',
+      messagePlaceholder: 'اشرح طلبك بالتفصيل...',
+      myTickets: 'تذاكري',
+      allTickets: 'تذاكر الأعضاء',
+      approve: 'قبول',
+      reject: 'رفض',
+      resolution: 'ملاحظة الرد',
+      noTickets: 'لا توجد تذاكر',
+      submitted: 'تم إرسال التذكرة بنجاح'
+    },
+    internalShop: {
+      title: 'المتجر الداخلي',
+      subtitle: 'اشترِ من رصيدك الشخصي المعتمد من الإدارة',
+      buy: 'شراء',
+      buyConfirm: 'هل تريد شراء هذا العنصر؟',
+      purchased: 'تم الشراء بنجاح',
+      myPurchases: 'مشترياتي',
+      noPurchases: 'لا توجد مشتريات',
+      insufficient: 'رصيدك غير كافٍ لإتمام الشراء',
+      noItems: 'لا توجد عناصر متاحة حالياً'
+    },
+    leaderboard: {
+      title: 'لوحة الشرف',
+      subtitle: 'أفضل المساهمين هذا الأسبوع',
+      score: 'النقاط',
+      opsPts: 'نقاط العمليات',
+      dutyPts: 'ساعات الدوام',
+      noMembers: 'لا يوجد أعضاء بعد',
+      gold: 'الذهبية',
+      silver: 'الفضية',
+      bronze: 'البرونزية',
+      you: 'أنت'
+    },
+    idCard: {
+      title: 'البطاقة الرقمية',
+      issued: 'صدرت في',
+      discordId: 'معرّف Discord',
+      inGameId: 'الرقم الداخلي',
+      totalOps: 'إجمالي العمليات',
+      wins: 'انتصارات',
+      dutyHours: 'ساعات الدوام',
+      balance: 'الرصيد',
+      memberSince: 'عضو منذ'
+    },
+    admin: {
+      title: 'لوحة الإدارة',
+      tabProducts: 'المنتجات',
+      tabUsers: 'الأعضاء',
+      tabFines: 'الغرامات',
+      tabInternal: 'المتجر الداخلي',
+      tabAnnouncements: 'الإعلانات',
+      tabTarget: 'الهدف الأسبوعي',
+      tabAudit: 'سجل التدقيق',
+      tabSettings: 'الإعدادات',
+      addProduct: 'منتج جديد',
+      editProduct: 'تعديل منتج',
+      stock: 'المخزون',
+      active: 'مفعّل',
+      inactive: 'غير مفعّل',
+      image: 'الصورة',
+      uploadImage: 'رفع صورة',
+      uploadHint: 'JPG/PNG/WEBP حتى 2 ميغابايت',
+      balanceAdjust: 'تعديل الرصيد',
+      adjustReason: 'سبب التعديل',
+      rankChange: 'تغيير الرتبة',
+      rankChanged: 'تم تغيير الرتبة ومزامنتها مع Discord',
+      ban: 'حظر',
+      unban: 'رفع الحظر',
+      banConfirm: 'هل تريد حظر هذا العضو من البوابة؟',
+      auditAction: 'الإجراء',
+      auditActor: 'المنفّذ',
+      auditTarget: 'المستهدف',
+      auditBefore: 'قبل',
+      auditAfter: 'بعد',
+      noAudit: 'لا توجد سجلات تدقيق',
+      weeklyGoal: 'هدف الأسبوع',
+      saveSettings: 'حفظ الإعدادات',
+      settingsSaved: 'تم حفظ الإعدادات',
+      deleteConfirm: 'هل أنت متأكد من الحذف؟',
+      addAnnouncement: 'إعلان جديد',
+      announcementTitle: 'عنوان الإعلان',
+      announcementBody: 'نص الإعلان',
+      stats: 'نظرة عامة',
+      totalUsers: 'إجمالي المستخدمين',
+      totalProducts: 'المنتجات',
+      totalOrders: 'الطلبات',
+      openTickets: 'تذاكر مفتوحة'
+    },
+    socket: {
+      connected: 'الاتصال المباشر نشط',
+      disconnected: 'انقطع الاتصال المباشر، جارٍ إعادة المحاولة...',
+      orderNew: 'طلب جديد وارد!',
+      orderStatus: 'تحديث حالة طلب',
+      farmReady: 'محصول جاهز للحصاد!',
+      targetUpdate: 'تحديث الهدف الأسبوعي',
+      announcement: 'إعلان جديد',
+      memberJoined: 'عضو جديد انضم'
+    },
+    errors: {
+      unauthorized: 'يجب تسجيل الدخول أولاً',
+      forbidden: 'ليس لديك صلاحية لهذا الإجراء',
+      notFound: 'العنصر غير موجود',
+      validation: 'تحقق من البيانات المدخلة',
+      rateLimit: 'محاولات كثيرة، انتظر قليلاً',
+      server: 'خطأ في الخادم',
+      discordDown: 'تعذر الوصول إلى Discord، حاول لاحقاً',
+      uploadType: 'نوع الملف غير مدعوم',
+      uploadSize: 'حجم الملف يتجاوز 2 ميغابايت'
+    }
+  }
+};
