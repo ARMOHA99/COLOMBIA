@@ -8,7 +8,7 @@ const { asyncHandler, fail } = require('../middleware/errors');
 const { requireAuth, requireRank } = require('../middleware/auth');
 const site = require('../../config/site');
 
-router.use(requireAuth, requireRank('member'));
+router.use(requireAuth, requireRank('ops'));
 
 function serialize(e) {
   return {
