@@ -468,6 +468,7 @@ router.put(
     const allowed = [
       'siteName',
       'siteTagline',
+      'logoUrl',
       'motd',
       'weeklyGoal',
       'lockoutEnabled',
