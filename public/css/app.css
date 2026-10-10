@@ -366,7 +366,7 @@ a {
 
 /* ---------- view / layout ---------- */
 .view {
-  padding: calc(var(--topbar-h) + 34px) 24px 60px calc(var(--drawer-w) + 34px);
+    padding: calc(var(--topbar-h) + 34px) 24px 60px 24px;
   max-width: 1500px;
   margin: 0 auto;
   min-height: 100vh;
