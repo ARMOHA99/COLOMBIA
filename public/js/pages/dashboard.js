@@ -244,7 +244,7 @@ export default {
         { icon: 'leaf', label: t('farm.title', 'المزرعة'), value: `${ready} ${ready === 1 ? 'جاهزة' : 'جاهزة'}`, route: '#/farm', tone: ready > 0 ? 'emerald' : '' },
                 ...(ctx.user.rank === 'member' ? [] : [{ icon: 'receipt', label: t('orders.title', 'الطلبات'), value: `${data.stats.pendingOrders} معلّق`, route: '#/orders' }]),
         { icon: 'mail', label: t('tickets.title', 'التذاكر'), value: `${data.stats.openTickets} مفتوحة`, route: '#/tickets' },
-        { icon: 'coins', label: t('treasury.title', 'الخزينة'), value: money(data.stats.balance), route: '#/treasury' }
+               ...(ctx.user.rank === 'member' ? [] : [{ icon: 'coins', label: t('treasury.title', 'الخزينة'), value: money(data.stats.balance), route: '#/treasury' }])
       ];
       return h(
         'div',
