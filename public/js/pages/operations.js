@@ -1,5 +1,5 @@
 import { h, icon, toast, modal, confirm, progressRing, badge, emptyState, skeleton, field, input, textarea, select, bindMagnetic } from '../ui.js';
-import { t, fmtDate, statusLabel } from '../state.js';
+import { t, fmtDate, statusLabel, money } from '../state.js';
 import { get, post, put, del } from '../api.js';
 import * as bus from '../bus.js';
 
@@ -83,9 +83,10 @@ export default {
       bar.classList.toggle('glow', target.glowing || target.completed);
       bar.querySelector('.progress-fill').style.width = `${target.percent}%`;
       targetMeta.append(
-        h('span', { class: 'pill', text: `${t('target.goal', 'الهدف')}: ${target.goal}` }),
-        h('span', { class: 'pill', text: `${t('target.remaining', 'المتبقي')}: ${target.remaining}` }),
-        h('span', { class: 'pill', text: `W ${target.wins} / L ${target.losses}` }),
+        h('span', { class: 'pill', text: `${t('target.goal', 'الهدف')}: ${money(target.goal)}` }),
+        h('span', { class: 'pill', text: `الصافي: ${money(target.score)}` }),
+        h('span', { class: 'pill', text: `${t('target.remaining', 'المتبقي')}: ${money(target.remaining)}` }),
+        h('span', { class: 'pill', text: `ربح ${money(target.wins)} / خسارة ${money(target.losses)}` }),
         target.completed ? badge(t('target.completed', 'اكتمل الهدف الأسبوعي! 🎉'), 'var(--emerald)') : null
       );
     }
@@ -120,6 +121,8 @@ export default {
       const resultS = select(
         Object.entries(site.statuses.opResult).map(([k, v]) => ({ value: k, label: v, selected: op ? op.result === k : k === 'pending' }))
       );
+      const winI = input({ type: 'number', min: '0', step: '1', value: String(op ? op.winAmount || 0 : 0), placeholder: '0' });
+      const lossI = input({ type: 'number', min: '0', step: '1', value: String(op ? op.lossAmount || 0 : 0), placeholder: '0' });
       const dateI = input({
         type: 'datetime-local',
         value: op && op.date ? new Date(new Date(op.date).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
@@ -137,6 +140,8 @@ export default {
         field(t('common.name', 'العنوان'), titleI),
         field(strings.type, typeS),
         field(strings.result, resultS),
+         field('المبلغ الربح ($)', winI),
+        field('المبلغ الخسرة ($)', lossI),
         field(t('common.date', 'التاريخ'), dateI),
         field(strings.participants, partS, strings.selectParticipants),
         field(t('common.notes', 'ملاحظات'), notesI)
@@ -151,6 +156,8 @@ export default {
             typeKey: typeS.value,
             date: dateI.value ? new Date(dateI.value) : new Date(),
             result: resultS.value,
+            winAmount: Number(winI.value) || 0,
+            lossAmount: Number(lossI.value) || 0,
             participants: Array.from(partS.selectedOptions).map((o) => o.value),
             notes: notesI.value.trim()
           };
@@ -244,6 +251,7 @@ export default {
                 badge(statusLabel('opResult', op.result), RESULT_COLOR[op.result] || 'var(--gold)')
               ),
               h('div', { class: 'tl-sub', text: `${op.typeLabel || ''} • ${fmtDate(op.date)}` }),
+              h('div', { class: 'row-wrap mt-1' }, badge(`ربح: ${money(op.winAmount || 0)}`, 'var(--emerald)'), badge(`خسارة: ${money(op.lossAmount || 0)}`, 'var(--danger)')),
               op.notes ? h('p', { class: 'small muted', style: { margin: '6px 0 0' }, text: op.notes }) : null,
               h(
                 'div',
