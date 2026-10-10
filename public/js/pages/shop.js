@@ -68,7 +68,7 @@ export default {
       )
     );
 
-    const productGrid = h('div', { class: 'grid grid-auto' });
+    const productGrid = h('div', { class: 'shop-grid' });
 
     function productCard(p) {
       const addBtn = h('button', {
@@ -90,7 +90,7 @@ export default {
             : badge(`${t('shop.stock', 'المخزون')}: ${p.stock}`, 'var(--emerald)')
         ),
         p.description ? h('p', { class: 'small muted', style: { margin: 0 }, text: p.description }) : null,
-        h('div', { class: 'between' }, h('span', { class: 'gold', text: money(p.price) }), h('span', { class: 'small muted', text: p.category || '' })),
+        h('div', { class: 'between' }, h('span', { class: 'gold', style: { fontSize: '18px', fontWeight: '800' }, text: money(p.price) })),
         h('div', { class: 'row-wrap' }, previewButton(t('shop.preview3d', 'معاينة ثلاثية الأبعاد'), { imageUrl: p.imageUrl, name: p.name }), addBtn)
       );
     }
@@ -105,13 +105,11 @@ export default {
       for (const p of list) productGrid.appendChild(productCard(p));
     }
 
-    const filter = segTabs(
-      [{ id: 'all', label: t('common.all', 'الكل') }, ...categories.map((c) => ({ id: c, label: c }))],
-      activeCat,
-      (id) => {
-        activeCat = id;
-        paintProducts();
-      }
+        const productsCard = h(
+      'div',
+      { class: 'card' },
+      h('div', { class: 'card-title' }, h('span', { text: strings.title })),
+      productGrid
     );
 
     const productsCard = h(
@@ -270,6 +268,6 @@ export default {
 
     paintProducts();
     paintCart();
-    root.appendChild(h('div', { class: 'grid grid-2' }, productsCard, cartCard));
+    root.appendChild(h('div', { class: 'shop-layout' }, productsCard, cartCard));
   }
 };
