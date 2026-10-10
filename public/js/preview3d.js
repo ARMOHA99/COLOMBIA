@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '/vendor/three.module.js';
 import { modal, icon } from './ui.js';
 
 export function openPreview({ imageUrl = '', name = '' } = {}) {
