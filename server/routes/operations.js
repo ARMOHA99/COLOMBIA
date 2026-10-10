@@ -66,7 +66,7 @@ router.post(
   '/',
   requireRank('ops'),
   asyncHandler(async (req, res) => {
-    const { title, typeKey, date, result, participants, notes } = req.body || {};
+     const { title, typeKey, date, result, participants, notes, winAmount, lossAmount } = req.body || {};
     if (!title || !typeKey) throw fail(400, site.strings.errors.validation, 'VALIDATION');
     const type = await OperationType.findOne({ key: typeKey });
     if (!type) throw fail(400, site.strings.errors.validation, 'VALIDATION');
@@ -77,6 +77,8 @@ router.post(
       typeLabel: type.label,
       date: date ? new Date(date) : new Date(),
       result: ['win', 'loss', 'pending'].includes(result) ? result : 'pending',
+      winAmount: Math.max(0, Number(winAmount) || 0),
+      lossAmount: Math.max(0, Number(lossAmount) || 0),
       participants: Array.isArray(participants) ? participants.slice(0, 60) : [],
       notes: notes ? String(notes).slice(0, 1000) : '',
       createdBy: req.user._id,
@@ -98,7 +100,7 @@ router.put(
     const op = await Operation.findById(req.params.id);
     if (!op) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
     const before = { title: op.title, result: op.result, typeKey: op.typeKey, participants: op.participants.length };
-    const { title, typeKey, date, result, participants, notes } = req.body || {};
+    const { title, typeKey, date, result, participants, notes, winAmount, lossAmount } = req.body || {};
 
     if (title) op.title = String(title).slice(0, 120);
     if (typeKey) {
@@ -111,6 +113,8 @@ router.put(
     if (result && ['win', 'loss', 'pending'].includes(result)) op.result = result;
     if (participants !== undefined) op.participants = Array.isArray(participants) ? participants.slice(0, 60) : [];
     if (notes !== undefined) op.notes = String(notes).slice(0, 1000);
+    if (winAmount !== undefined) op.winAmount = Math.max(0, Number(winAmount) || 0);
+    if (lossAmount !== undefined) op.lossAmount = Math.max(0, Number(lossAmount) || 0);
     op.updatedBy = req.user._id;
     await op.save();
 
