@@ -20,6 +20,8 @@ function serialize(op) {
     typeLabel: op.typeLabel,
     date: op.date,
     result: op.result,
+    winAmount: op.winAmount || 0,
+    lossAmount: op.lossAmount || 0,
     participants: (op.participants || []).filter(Boolean).map((u) => ({
       id: String(u._id),
       name: u.displayName ? u.displayName() : String(u),
