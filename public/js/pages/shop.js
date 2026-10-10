@@ -5,7 +5,7 @@ import { previewButton } from '../preview3d.js';
 
 let cart = [];
 
-function thumb(src, name, height = 150) {
+function thumb(p.imageUrl, p.name, 230) {
   if (src) {
     return h('img', {
       src,
