@@ -1,7 +1,7 @@
 'use strict';
 
 const router = require('express').Router();
-const { User, Operation, DutySession } = require('../models');
+const { User, Operation, DutySession, Discipline, InternalPurchase } = require('../models');
 const { asyncHandler } = require('../middleware/errors');
 const { requireAuth, requireRank } = require('../middleware/auth');
 const site = require('../../config/site');
