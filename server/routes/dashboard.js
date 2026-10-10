@@ -48,7 +48,7 @@ router.get(
       stats: {
         members: memberCount,
         opsWeek,
-        balance: Math.round((income - expense) * 100) / 100,
+        balance: req.user.rank === 'member' ? 0 : Math.round((income - expense) * 100) / 100,
         pendingOrders,
         openTickets,
         readyPlots: plots
