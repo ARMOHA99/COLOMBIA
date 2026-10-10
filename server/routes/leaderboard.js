@@ -71,16 +71,26 @@ router.get(
   '/card',
   asyncHandler(async (req, res) => {
     const user = req.user;
-    const [opsCount, wins, losses, dutyAgg] = await Promise.all([
+    const since = user.joinedAt || user.createdAt;
+    const [opsCount, wins, losses, missedOps, warnings, dutyAgg, gearAgg] = await Promise.all([
       Operation.countDocuments({ participants: user._id }),
       Operation.countDocuments({ participants: user._id, result: 'win' }),
       Operation.countDocuments({ participants: user._id, result: 'loss' }),
+      Operation.countDocuments({ date: { $gte: since }, participants: { $ne: user._id } }),
+      Discipline.countDocuments({ user: user._id, kind: { $in: ['warning', 'fine'] } }),
       DutySession.aggregate([
         { $match: { user: user._id } },
         { $group: { _id: null, minutes: { $sum: '$durationMin' } } }
+      ]),
+      InternalPurchase.aggregate([
+        { $match: { user: user._id } },
+        { $group: { _id: '$itemName', qty: { $sum: '$qty' } } },
+        { $sort: { qty: -1 } },
+        { $limit: 12 }
       ])
     ]);
     const minutes = dutyAgg[0] ? dutyAgg[0].minutes : 0;
+    const totalOps = opsCount + missedOps;
     res.json({
       card: {
         id: String(user._id),
@@ -95,7 +105,11 @@ router.get(
         opsCount,
         wins,
         losses,
-        dutyHours: Math.round((minutes / 60) * 10) / 10
+        missedOps,
+        warnings,
+        participationRate: totalOps ? Math.round((opsCount / totalOps) * 100) : 0,
+        dutyHours: Math.round((minutes / 60) * 10) / 10,
+        gear: gearAgg.map((g) => ({ name: g._id, qty: g.qty }))
       }
     });
   })
