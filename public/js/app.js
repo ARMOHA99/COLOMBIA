@@ -2,7 +2,7 @@ import { state, t, rankOrder, rankLabel } from './state.js';
 import { api } from './api.js';
 import * as bus from './bus.js';
 import { connectSocket, disconnectSocket } from './socket-client.js';
-import { h, icon, toast, bindMagnetic, modal } from './ui.js';
+import { h, icon, toast, bindMagnetic, modal, applyBrandLogo } from './ui.js';
 import { initBackground } from './three-bg.js';
 
 const PAGE_MODULES = {
@@ -88,6 +88,7 @@ function showLogin(reason) {
     h('p', { class: 'login-foot', text: `${site.locale.timezone} • ${site.locale.dir === 'rtl' ? 'واجهة عربية' : 'Interface'}` })
   );
   root.appendChild(card);
+  applyBrandLogo(site.runtime && site.runtime.logoUrl);
 }
 
 function svgDiscord() {
@@ -417,6 +418,7 @@ async function boot() {
   els.brandMark.textContent = (state.site.org.initials || 'CO').slice(0, 3);
   els.brandName.textContent = state.site.runtime && state.site.runtime.siteName ? state.site.runtime.siteName : state.site.org.name;
   els.brandTag.textContent = state.site.org.tagline;
+  applyBrandLogo(state.site.runtime && state.site.runtime.logoUrl);
 
   els.menuBtn.addEventListener('click', () => {
     if (els.drawer.classList.contains('open')) closeDrawer();
