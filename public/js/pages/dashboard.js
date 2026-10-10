@@ -242,7 +242,7 @@ export default {
       const ready = data.stats.readyPlots || 0;
       const items = [
         { icon: 'leaf', label: t('farm.title', 'المزرعة'), value: `${ready} ${ready === 1 ? 'جاهزة' : 'جاهزة'}`, route: '#/farm', tone: ready > 0 ? 'emerald' : '' },
-        { icon: 'receipt', label: t('orders.title', 'الطلبات'), value: `${data.stats.pendingOrders} معلّق`, route: '#/orders' },
+                ...(ctx.user.rank === 'member' ? [] : [{ icon: 'receipt', label: t('orders.title', 'الطلبات'), value: `${data.stats.pendingOrders} معلّق`, route: '#/orders' }]),
         { icon: 'mail', label: t('tickets.title', 'التذاكر'), value: `${data.stats.openTickets} مفتوحة`, route: '#/tickets' },
         { icon: 'coins', label: t('treasury.title', 'الخزينة'), value: money(data.stats.balance), route: '#/treasury' }
       ];
