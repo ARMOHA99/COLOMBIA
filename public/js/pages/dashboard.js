@@ -79,7 +79,7 @@ export default {
       { label: strings.statsOpsWeek, value: data.stats.opsWeek, icon: 'target', sub: 'هذا الأسبوع' },
       { label: strings.statsTarget, value: data.target ? data.target.percent : 0, icon: 'chart', suffix: '%', sub: data.target ? `${money(data.target.score)} / ${money(data.target.goal)}` : '', tone: 'emerald-tone' },
       { label: strings.statsBalance, value: data.stats.balance, icon: 'coins', money: true, sub: `📦 ${data.stats.pendingOrders} • 🎫 ${data.stats.openTickets}` }
-    ];
+      ].filter((s) => !(s.money && ctx.user.rank === 'member'));
 
     const statCards = stats.map((s) =>
       h(
