@@ -70,15 +70,11 @@ async function recomputeTarget({ emit = true } = {}) {
   try {
     const doc = await getCurrentTarget();
     const agg = await Operation.aggregate([
-      { $match: { date: { $gte: doc.weekStart, $lt: doc.weekEnd }, result: { $in: ['win', 'loss'] } } },
-      { $group: { _id: '$result', count: { $sum: 1 } } }
+      { $match: { date: { $gte: doc.weekStart, $lt: doc.weekEnd } } },
+      { $group: { _id: null, won: { $sum: '$winAmount' }, lost: { $sum: '$lossAmount' } } }
     ]);
-    let wins = 0;
-    let losses = 0;
-    for (const row of agg) {
-      if (row._id === 'win') wins = row.count;
-      if (row._id === 'loss') losses = row.count;
-    }
+    const wins = agg[0] ? agg[0].won : 0;
+    const losses = agg[0] ? agg[0].lost : 0;
     const score = Math.max(0, wins - losses);
     const wasCompleted = Boolean(doc.completedAt);
     doc.wins = wins;
