@@ -80,7 +80,7 @@ export default {
       return h(
         'div',
         { class: 'card', style: { padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' } },
-        thumb(p.imageUrl, p.name, 150),
+        thumb(p.imageUrl, p.name, 230),
         h(
           'div',
           { class: 'between' },
@@ -109,14 +109,6 @@ export default {
       'div',
       { class: 'card' },
       h('div', { class: 'card-title' }, h('span', { text: strings.title })),
-      productGrid
-    );
-
-    const productsCard = h(
-      'div',
-      { class: 'card' },
-      h('div', { class: 'card-title' }, h('span', { text: t('shop.categories', 'الأقسام') })),
-      h('div', { class: 'mb-2' }, filter),
       productGrid
     );
 
