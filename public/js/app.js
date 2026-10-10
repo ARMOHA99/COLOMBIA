@@ -101,6 +101,7 @@ function buildNav() {
   const me = state.user;
   for (const item of state.site.nav) {
     if (rankOrder(me.rank) < item.minRank) continue;
+     if (item.hideFor && item.hideFor.includes(me.rank)) continue;
     const btn = h(
       'button',
       {
@@ -193,7 +194,7 @@ async function renderRoute() {
     navigate(defaultRoute());
     return;
   }
-  if (rankOrder(state.user.rank) < navItem.minRank) {
+    if ((navItem.hideFor && navItem.hideFor.includes(state.user.rank)) || rankOrder(state.user.rank) < navItem.minRank) {
     toast(t('errors.forbidden', 'ليس لديك صلاحية لهذا الإجراء'), 'error');
     navigate(defaultRoute());
     return;
