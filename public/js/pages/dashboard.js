@@ -77,7 +77,7 @@ export default {
     const stats = [
       { label: strings.statsMembers, value: data.stats.members, icon: 'user', sub: 'أعضاء نشطون' },
       { label: strings.statsOpsWeek, value: data.stats.opsWeek, icon: 'target', sub: 'هذا الأسبوع' },
-      { label: strings.statsTarget, value: data.target ? data.target.percent : 0, icon: 'chart', suffix: '%', sub: data.target ? `${data.target.score} / ${data.target.goal}` : '', tone: 'emerald-tone' },
+      { label: strings.statsTarget, value: data.target ? data.target.percent : 0, icon: 'chart', suffix: '%', sub: data.target ? `${money(data.target.score)} / ${money(data.target.goal)}` : '', tone: 'emerald-tone' },
       { label: strings.statsBalance, value: data.stats.balance, icon: 'coins', money: true, sub: `📦 ${data.stats.pendingOrders} • 🎫 ${data.stats.openTickets}` }
     ];
 
@@ -109,8 +109,8 @@ export default {
       targetBar.querySelector('.progress-fill').style.width = `${target.percent}%`;
       targetMeta.innerHTML = '';
       targetMeta.append(
-        h('span', { class: 'pill', text: `${t('target.goal', 'الهدف')}: ${target.goal}` }),
-        h('span', { class: 'pill', text: `${t('target.remaining', 'المتبقي')}: ${target.remaining}` }),
+        h('span', { class: 'pill', text: `${t('target.goal', 'الهدف')}: ${money(target.goal)}` }),
+        h('span', { class: 'pill', text: `${t('target.remaining', 'المتبقي')}: ${money(target.remaining)}` }),
         h('span', { class: 'pill', text: `${site.locale.timezone}` }),
         target.completed ? badge(t('target.completed', 'اكتمل الهدف الأسبوعي! 🎉'), 'var(--emerald)') : null
       );
