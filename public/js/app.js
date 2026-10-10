@@ -7,6 +7,7 @@ import { initBackground } from './three-bg.js';
 
 const PAGE_MODULES = {
   dashboard: () => import('./pages/dashboard.js'),
+  card: () => import('./pages/card.js'),
   shop: () => import('./pages/shop.js'),
   orders: () => import('./pages/orders.js'),
   attendance: () => import('./pages/attendance.js'),
