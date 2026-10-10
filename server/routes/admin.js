@@ -496,6 +496,7 @@ router.put(
     }
     if (settings.lockoutStart && !/^\d{1,2}:\d{2}$/.test(settings.lockoutStart)) settings.lockoutStart = site.defaults.lockoutStart;
     if (settings.lockoutEnd && !/^\d{1,2}:\d{2}$/.test(settings.lockoutEnd)) settings.lockoutEnd = site.defaults.lockoutEnd;
+    if (settings.logoUrl && !/^https:\/\/[^\s"'<>]+$/.test(settings.logoUrl)) settings.logoUrl = '';
     await settings.save();
 
     if (before.weeklyGoal !== undefined && before.weeklyGoal !== settings.weeklyGoal) await targetSvc.setWeeklyGoal(settings.weeklyGoal);
