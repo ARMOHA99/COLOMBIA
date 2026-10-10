@@ -80,7 +80,7 @@ function showLogin(reason) {
       ? h(
           'a',
           { class: 'discord-btn', href: '/api/auth/login' },
-          svgDiscord(),
+          h('span', { html: svgDiscord() }),
           h('span', { text: site.strings.auth.loginButton })
         )
       : h('div', { class: 'login-alert warn' }, h('span', { html: icon('alert', 18) }), h('span', { text: site.strings.errors.discordDown })),
