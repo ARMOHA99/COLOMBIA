@@ -59,7 +59,7 @@ module.exports = {
     { id: 'attendance', hash: '#/attendance', label: 'الدوام', icon: 'clock', minRank: 2 },
     { id: 'operations', hash: '#/operations', label: 'العمليات', icon: 'target', minRank: 2 },
     { id: 'farm', hash: '#/farm', label: 'المزرعة', icon: 'leaf', minRank: 2 },
-    { id: 'treasury', hash: '#/treasury', label: 'الخزينة', icon: 'coins', minRank: 2 },
+    { id: 'treasury', hash: '#/treasury', label: 'الخزينة', icon: 'coins', minRank: 2, hideFor: ['member'] },
     { id: 'internal', hash: '#/internal', label: 'المتجر الداخلي', icon: 'cart', minRank: 2 },
     { id: 'discipline', hash: '#/discipline', label: 'سجل الانضباط', icon: 'shield', minRank: 2 },
     { id: 'tickets', hash: '#/tickets', label: 'التذاكر', icon: 'mail', minRank: 2 },
