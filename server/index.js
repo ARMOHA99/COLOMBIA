@@ -25,6 +25,7 @@ const { notFound, errorHandler } = require('./middleware/errors');
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 const VENDOR_DIRS = {
   '/vendor/three.module.js': path.join(__dirname, '..', 'node_modules', 'three', 'build', 'three.module.js'),
+  '/vendor/three.core.js': path.join(__dirname, '..', 'node_modules', 'three', 'build', 'three.core.js'),
   '/vendor/chart.umd.js': path.join(__dirname, '..', 'node_modules', 'chart.js', 'dist', 'chart.umd.js'),
   '/vendor/socket.io.js': path.join(__dirname, '..', 'node_modules', 'socket.io', 'client-dist', 'socket.io.js')
 };
