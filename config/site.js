@@ -189,7 +189,7 @@ module.exports = {
       relogin: 'إعادة تسجيل الدخول'
     },
     dashboard: {
-      title: 'لوحة القيادة',
+      title: 'الداشبورد',
       welcome: 'مرحباً',
       statsMembers: 'الأعضاء',
       statsOpsWeek: 'عمليات هذا الأسبوع',
