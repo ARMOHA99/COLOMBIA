@@ -120,7 +120,7 @@ export default {
 
     const dutyBtn = h('button', {
       class: data.duty.onDuty ? 'btn btn-danger btn-sm' : 'btn btn-emerald btn-sm',
-      text: data.duty.onDuty ? strings.dutyStatus + ' • ' + t('dashboard.onDuty', 'على رأس العمل') : t('attendance.clockIn', 'بدء الدوام'),
+      text: data.duty.onDuty ? strings.dutyStatus + ' • ' + t('dashboard.onDuty', 'على رأس العمل') : t('attendance.clockIn', 'تسجيل دخول'),
       onClick: async () => {
         dutyBtn.disabled = true;
         try {
@@ -139,7 +139,7 @@ export default {
     const dutyTime = h('span', { class: 'small muted', text: data.duty.since ? `${fmtTime(data.duty.since)}` : '—' });
     function paintDuty() {
       dutyBtn.className = dutyOn ? 'btn btn-danger btn-sm' : 'btn btn-emerald btn-sm';
-      dutyBtn.textContent = dutyOn ? `${strings.dutyStatus} • ${t('dashboard.onDuty', 'على رأس العمل')}` : t('attendance.clockIn', 'بدء الدوام');
+      dutyBtn.textContent = dutyOn ? `${strings.dutyStatus} • ${t('dashboard.onDuty', 'على رأس العمل')}` : t('attendance.clockIn', 'تسجيل دخول');
       dutyTime.textContent = dutyOn ? `منذ ${fmtTime(data.duty.since)}` : '—';
     }
 
