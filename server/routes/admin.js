@@ -13,11 +13,13 @@ const {
   TreasuryEntry,
   AuditLog,
   Settings,
-  DutySession
+  DutySession,
+  HourAdjustment
 } = require('../models');
 const env = require('../../config/env');
 const site = require('../../config/site');
 const rolesSvc = require('../services/roles');
+const hoursSvc = require('../services/hours');
 const targetSvc = require('../services/target');
 const farmSvc = require('../services/farm');
 const discord = require('../services/discord');
@@ -28,13 +30,20 @@ const { requireAuth, requireRank } = require('../middleware/auth');
 const { upload, uploadBuffer } = require('../middleware/upload');
 const time = require('../utils/time');
 
-router.use(requireAuth, requireRank('admin'));
+const BUSINESS_ALLOWED = [/^\/products(\/|$)/, /^\/internal-items(\/|$)/, /^\/upload$/];
+router.use(requireAuth, (req, res, next) => {
+  const isAdmin = rolesSvc.rankValue(req.user.rank) >= rolesSvc.rankValue('admin');
+  const isBusiness = req.user.rank === 'business' && BUSINESS_ALLOWED.some((re) => re.test(req.path));
+  if (isAdmin || isBusiness) return next();
+  return res.status(403).json({ error: site.strings.errors.forbidden, code: 'FORBIDDEN' });
+});
 
 const ROLE_BY_RANK = {
   admin: env.roles.admin,
   ops: env.roles.ops,
   member: env.roles.member,
   shop: env.roles.shop,
+  business: env.roles.business,
   guest: ''
 };
 
@@ -202,13 +211,40 @@ router.put(
   })
 );
 
+router.post(
+  '/users/:id/hours',
+  asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id);
+    if (!user) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
+    const hours = Number((req.body || {}).hours);
+    const reason = String((req.body || {}).reason || '').trim().slice(0, 300);
+    if (!Number.isFinite(hours) || hours <= 0 || hours > 500) throw fail(400, site.strings.errors.validation, 'VALIDATION');
+    const minutes = Math.round(hours * 60);
+    if (minutes < 1) throw fail(400, site.strings.errors.validation, 'VALIDATION');
+    const before = await hoursSvc.minutesFor(user._id);
+    await HourAdjustment.create({ user: user._id, minutes, reason, by: req.user._id });
+    const after = await hoursSvc.minutesFor(user._id);
+    await logAudit({
+      actor: req.user,
+      action: 'user.hours.deduct',
+      targetType: 'user',
+      targetId: user.discordId,
+      before,
+      after: { ...after, deductedMin: minutes, reason },
+      ip: req.ip
+    });
+    bus.emit('notify', { room: `user:${user.discordId}`, event: 'user:updated', data: rolesSvc.publicUser(user) });
+    res.json({ ok: true, deductedMin: minutes, ...after });
+  })
+);
+
 router.put(
   '/users/:id/rank',
   asyncHandler(async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
     const nextRank = (req.body || {}).rank;
-    if (!['admin', 'ops', 'member', 'shop', 'guest'].includes(nextRank)) {
+    if (!['admin', 'ops', 'business', 'member', 'shop', 'guest'].includes(nextRank)) {
       throw fail(400, site.strings.errors.validation, 'VALIDATION');
     }
 
