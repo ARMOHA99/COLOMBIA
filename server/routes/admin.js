@@ -54,7 +54,7 @@ function slimUser(u) {
     name: u.displayName(),
     avatar: u.avatarUrl(64),
     rank: u.rank,
-    rankLabel: site.ranks[u.rank] ? site.ranks[u.rank].label : u.rank,
+    rankLabel: rolesSvc.rankLabelOf(u),
     balance: u.balance,
     banned: u.banned,
     banReason: u.banReason,
@@ -264,6 +264,7 @@ router.put(
 
     user.roles = targetRole ? [targetRole] : [];
     user.rank = nextRank;
+    user.roleLabel = await rolesSvc.labelFor(user.roles);
     user.rolesCheckedAt = new Date();
     await user.save();
 
@@ -506,6 +507,7 @@ router.put(
       'siteTagline',
       'logoUrl',
       'bgLogoUrl',
+      'ordersChannelId',
       'motd',
       'weeklyGoal',
       'lockoutEnabled',
@@ -534,6 +536,7 @@ router.put(
     if (settings.lockoutStart && !/^\d{1,2}:\d{2}$/.test(settings.lockoutStart)) settings.lockoutStart = site.defaults.lockoutStart;
     if (settings.lockoutEnd && !/^\d{1,2}:\d{2}$/.test(settings.lockoutEnd)) settings.lockoutEnd = site.defaults.lockoutEnd;
     if (settings.logoUrl && !/^https:\/\/[^\s"'<>]+$/.test(settings.logoUrl)) settings.logoUrl = '';
+    if (settings.ordersChannelId && !/^\d{15,25}$/.test(settings.ordersChannelId)) settings.ordersChannelId = '';
     if (settings.bgLogoUrl && !/^https:\/\/[^\s"'<>]+$/.test(settings.bgLogoUrl)) settings.bgLogoUrl = '';
     await settings.save();
 
