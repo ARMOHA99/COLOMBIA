@@ -8,7 +8,7 @@ const bus = require('./bus');
 const logger = require('./logger');
 const { logAudit } = require('./audit');
 
-const RANK_ORDER = { guest: 0, shop: 1, member: 2, ops: 3, admin: 4 };
+const RANK_ORDER = { guest: 0, shop: 1, business: 1.5, member: 2, ops: 3, admin: 4 };
 
 const registry = {
   map: new Map(),
@@ -48,6 +48,7 @@ function rankOf(roleIds) {
   const set = new Set(Array.isArray(roleIds) ? roleIds : []);
   if (env.roles.admin && set.has(env.roles.admin)) return 'admin';
   if (env.roles.ops && set.has(env.roles.ops)) return 'ops';
+  if (env.roles.business && set.has(env.roles.business)) return 'business';
   if (env.roles.member && set.has(env.roles.member)) return 'member';
   if (env.roles.shop && set.has(env.roles.shop)) return 'shop';
   return 'guest';
@@ -60,6 +61,7 @@ function rankValue(rank) {
 function hasShopDuty(user) {
   if (!user) return false;
   if (rankValue(user.rank) >= 3) return true;
+  if (user.rank === 'business') return true;
   return env.roles.shop ? (user.roles || []).includes(env.roles.shop) : user.rank === 'shop';
 }
 
