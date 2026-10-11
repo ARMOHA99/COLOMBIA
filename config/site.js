@@ -46,6 +46,7 @@ module.exports = {
   ranks: {
     admin: { key: 'admin', label: 'مدير عام', order: 4, color: '#d4af37', perm: 'كل الصلاحيات' },
     ops: { key: 'ops', label: 'ضابط', order: 3, color: '#10b981', perm: 'إدارة العمليات والمخالفات' },
+    business: { key: 'business', label: 'بزنس مانجر', order: 1.5, color: '#a855f7', perm: 'الأصناف والأسعار والخزينة والمتاجر' },
     member: { key: 'member', label: 'عضو', order: 2, color: '#38bdf8', perm: 'المنطقة الخاصة بالأعضاء' },
     shop: { key: 'shop', label: 'متجر', order: 1, color: '#f59e0b', perm: 'المتجر وإدارة الطلبات' },
     guest: { key: 'guest', label: 'زائر', order: 0, color: '#9a978f', perm: 'بدون صلاحيات' }
@@ -59,7 +60,9 @@ module.exports = {
     { id: 'attendance', hash: '#/attendance', label: 'الدوام', icon: 'clock', minRank: 2 },
     { id: 'operations', hash: '#/operations', label: 'العمليات', icon: 'target', minRank: 2 },
     { id: 'farm', hash: '#/farm', label: 'المزرعة', icon: 'leaf', minRank: 2 },
-    { id: 'treasury', hash: '#/treasury', label: 'الخزينة', icon: 'coins', minRank: 2, hideFor: ['member'] },
+    { id: 'treasury', hash: '#/treasury', label: 'الخزينة', icon: 'coins', minRank: 2, hideFor: ['member'], allow: ['business'] },
+    { id: 'items', hash: '#/items', label: 'الأصناف والأسعار', icon: 'box', minRank: 4, allow: ['business'] },
+    { id: 'shops', hash: '#/shops', label: 'إدارة المتاجر', icon: 'cart', minRank: 99, allow: ['business'] },
     { id: 'internal', hash: '#/internal', label: 'المتجر الداخلي', icon: 'cart', minRank: 2 },
     { id: 'discipline', hash: '#/discipline', label: 'سجل الانضباط', icon: 'shield', minRank: 2 },
     { id: 'tickets', hash: '#/tickets', label: 'التذاكر', icon: 'mail', minRank: 2 },
@@ -72,6 +75,7 @@ module.exports = {
     ops: '#/dashboard',
     member: '#/dashboard',
     shop: '#/shop',
+    business: '#/items',
     guest: null
   },
 
