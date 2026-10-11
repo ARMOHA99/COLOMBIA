@@ -17,7 +17,9 @@ const PAGE_MODULES = {
   tickets: () => import('./pages/tickets.js'),
   internal: () => import('./pages/internal.js'),
   leaderboard: () => import('./pages/leaderboard.js'),
-  admin: () => import('./pages/admin.js')
+  admin: () => import('./pages/admin.js'),
+  items: () => import('./pages/items.js'),
+  shops: () => import('./pages/shops.js')
 };
 
 const els = {};
@@ -100,8 +102,8 @@ function buildNav() {
   list.innerHTML = '';
   const me = state.user;
   for (const item of state.site.nav) {
-    if (rankOrder(me.rank) < item.minRank) continue;
-     if (item.hideFor && item.hideFor.includes(me.rank)) continue;
+    if (item.hideFor && item.hideFor.includes(me.rank)) continue;
+    if (!(item.allow && item.allow.includes(me.rank)) && rankOrder(me.rank) < item.minRank) continue;
     const btn = h(
       'button',
       {
@@ -194,7 +196,8 @@ async function renderRoute() {
     navigate(defaultRoute());
     return;
   }
-    if ((navItem.hideFor && navItem.hideFor.includes(state.user.rank)) || rankOrder(state.user.rank) < navItem.minRank) {
+  const allowedByRank = Boolean(navItem.allow && navItem.allow.includes(state.user.rank));
+  if ((navItem.hideFor && navItem.hideFor.includes(state.user.rank)) || (!allowedByRank && rankOrder(state.user.rank) < navItem.minRank)) {
     toast(t('errors.forbidden', 'ليس لديك صلاحية لهذا الإجراء'), 'error');
     navigate(defaultRoute());
     return;
@@ -228,7 +231,7 @@ async function renderRoute() {
   }
 
   const pageRank = mod.default.minRank !== undefined ? mod.default.minRank : navItem.minRank;
-  if (rankOrder(state.user.rank) < pageRank) {
+  if (!allowedByRank && rankOrder(state.user.rank) < pageRank) {
     toast(t('errors.forbidden', 'ليس لديك صلاحية'), 'error');
     navigate(defaultRoute());
     return;
