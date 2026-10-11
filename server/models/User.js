@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema(
     banned: { type: Boolean, default: false },
     banReason: { type: String, default: '' },
     rolesCheckedAt: { type: Date, default: Date.now },
+    roleLabel: { type: String, default: '' },
     lastSeenAt: { type: Date, default: Date.now },
     joinedAt: { type: Date, default: Date.now },
     firstLoginAt: { type: Date, default: Date.now }
