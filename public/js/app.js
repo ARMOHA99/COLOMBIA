@@ -3,8 +3,7 @@ import { api } from './api.js';
 import * as bus from './bus.js';
 import { connectSocket, disconnectSocket } from './socket-client.js';
 import { h, icon, toast, bindMagnetic, modal, applyBrandLogo } from './ui.js';
-import { initBackground } from './three-bg.js';
-
+import { initBackground, setBackgroundLogo } from './three-bg.js';
 const PAGE_MODULES = {
   dashboard: () => import('./pages/dashboard.js'),
   card: () => import('./pages/card.js'),
@@ -393,6 +392,7 @@ async function boot() {
   try {
     const site = await api('/site');
     state.site = site;
+    setBackgroundLogo(site.runtime && site.runtime.bgLogoUrl);
     state.buildId = site.buildId;
     applyBranding();
   } catch (err) {
