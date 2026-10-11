@@ -1,5 +1,11 @@
 import * as THREE from '/vendor/three.module.js';
+let pendingLogoUrl = '';
+let setActiveLogo = null;
 
+export function setBackgroundLogo(url) {
+  pendingLogoUrl = url || '';
+  if (setActiveLogo) setActiveLogo(pendingLogoUrl);
+}
 export function initBackground(canvas) {
   if (!canvas) return () => {};
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
