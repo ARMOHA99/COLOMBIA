@@ -66,7 +66,13 @@ export function initBackground(canvas) {
   emblemGroup.add(emblem, emblemCore);
   emblemGroup.position.set(6, -2, -6);
   scene.add(emblemGroup);
-
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(10.5, 0.045, 8, 120),
+    new THREE.MeshBasicMaterial({ color: 0xd4af37, transparent: true, opacity: 0.16 })
+  );
+  ring.rotation.x = Math.PI / 2.4;
+  ring.position.copy(emblemGroup.position);
+  scene.add(ring);
     let logoMesh = null;
   let logoToken = 0;
   const textureLoader = new THREE.TextureLoader();
