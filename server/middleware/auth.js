@@ -71,4 +71,18 @@ function requireRank(minRank) {
   };
 }
 
-module.exports = { loadSessionUser, requireAuth, requireRank, killSession };
+function requireRankOr(minRank, ...extraRanks) {
+  const min = rolesSvc.rankValue(minRank);
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: site.strings.errors.unauthorized, code: 'UNAUTHENTICATED' });
+    }
+    const value = req.userRankValue || rolesSvc.rankValue(req.user.rank);
+    if (value < min && !extraRanks.includes(req.user.rank)) {
+      return res.status(403).json({ error: site.strings.errors.forbidden, code: 'FORBIDDEN' });
+    }
+    return next();
+  };
+}
+
+module.exports = { loadSessionUser, requireAuth, requireRank, requireRankOr, killSession };
