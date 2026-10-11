@@ -5,10 +5,10 @@ const { TreasuryEntry, Settings } = require('../models');
 const bus = require('../services/bus');
 const { logAudit } = require('../services/audit');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRank } = require('../middleware/auth');
+const { requireAuth, requireRankOr } = require('../middleware/auth');
 const site = require('../../config/site');
 
-router.use(requireAuth, requireRank('ops'));
+router.use(requireAuth, requireRankOr('ops', 'business'));
 
 function serialize(e) {
   return {
@@ -38,14 +38,14 @@ router.get(
       balance: Math.round((income - expense) * 100) / 100,
       summary: { income, expense, count: entries.length },
       categories: settings.treasuryCategories || [],
-      canWrite: req.userRankValue >= 3
+      canWrite: req.userRankValue >= 3 || req.user.rank === 'business'
     });
   })
 );
 
 router.post(
   '/',
-  requireRank('ops'),
+  requireRankOr('ops', 'business'),
   asyncHandler(async (req, res) => {
     const { type, category, amount, note } = req.body || {};
     if (!['income', 'expense'].includes(type)) throw fail(400, site.strings.errors.validation, 'VALIDATION');
@@ -69,7 +69,7 @@ router.post(
 
 router.put(
   '/:id',
-  requireRank('ops'),
+  requireRankOr('ops', 'business'),
   asyncHandler(async (req, res) => {
     const entry = await TreasuryEntry.findById(req.params.id);
     if (!entry) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
@@ -93,7 +93,7 @@ router.put(
 
 router.delete(
   '/:id',
-  requireRank('ops'),
+  requireRankOr('ops', 'business'),
   asyncHandler(async (req, res) => {
     const entry = await TreasuryEntry.findById(req.params.id);
     if (!entry) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
