@@ -86,6 +86,42 @@ async function getMemberRoles(discordId) {
   return { roles: [], left: true };
 }
 
+let rolesCache = { at: 0, list: [] };
+
+async function fetchGuildRoles() {
+  if (!env.discord.configured) return [];
+  if (Date.now() - rolesCache.at < 10 * 60 * 1000 && rolesCache.list.length) return rolesCache.list;
+  try {
+    const res = await discordFetch(`/guilds/${env.discord.guildId}/roles`, { token: env.discord.token });
+    if (res.ok && Array.isArray(res.data)) {
+      rolesCache = {
+        at: Date.now(),
+        list: res.data.map((r) => ({
+          id: String(r.id),
+          name: r.name,
+          position: r.position,
+          hoist: Boolean(r.hoist),
+          managed: Boolean(r.managed)
+        }))
+      };
+    }
+  } catch (err) {
+    logger.warn(`fetchGuildRoles failed: ${err.message}`);
+  }
+  return rolesCache.list;
+}
+
+function cachedRole(roleId) {
+  return rolesCache.list.find((r) => r.id === String(roleId)) || null;
+}
+
+async function sendChannelMessage(channelId, body) {
+  if (!env.discord.configured || !channelId) return false;
+  const res = await discordFetch(`/channels/${channelId}/messages`, { method: 'POST', token: env.discord.token, body });
+  if (!res.ok) logger.warn(`sendChannelMessage failed: ${res.status} ${(res.data && res.data.message) || ''}`);
+  return res.ok;
+}
+
 async function addRole(discordId, roleId) {
   if (!env.discord.configured || !roleId) return false;
   const res = await discordFetch(`/guilds/${env.discord.guildId}/members/${discordId}/roles/${roleId}`, {
@@ -112,6 +148,9 @@ module.exports = {
   fetchBotGuildMember,
   fetchAllGuildMembers,
   getMemberRoles,
+  fetchGuildRoles,
+  cachedRole,
+  sendChannelMessage,
   addRole,
   removeRole
 };
