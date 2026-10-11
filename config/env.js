@@ -44,7 +44,7 @@ const env = {
     cookiesSecure: bool(process.env.COOKIE_SECURE, IS_PROD),
     reconcileMs: 5 * 60 * 1000,
     sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
-    maxUploadBytes: 2 * 1024 * 1024
+    maxUploadBytes: 5 * 1024 * 1024
   }
 };
 
