@@ -4,6 +4,7 @@ const router = require('express').Router();
 const { Order, Product } = require('../models');
 const rolesSvc = require('../services/roles');
 const bus = require('../services/bus');
+const orderNotify = require('../services/orderNotify');
 const { asyncHandler, fail } = require('../middleware/errors');
 const { requireAuth, requireRank, requireRankOr } = require('../middleware/auth');
 const site = require('../../config/site');
@@ -106,6 +107,7 @@ router.post(
     const payload = serialize(fresh);
     bus.emit('notify', { room: 'scope:shop', event: 'order:new', data: payload });
     bus.emit('notify', { room: `user:${req.user.discordId}`, event: 'order:new', data: payload });
+    orderNotify.notifyNewOrder(fresh, req.user).catch(() => {});
     res.status(201).json({ order: payload, message: site.strings.shop.orderSent });
   })
 );
