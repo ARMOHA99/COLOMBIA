@@ -69,9 +69,24 @@ async function getCurrentTarget({ allowRollover = true } = {}) {
 async function recomputeTarget({ emit = true } = {}) {
   try {
     const doc = await getCurrentTarget();
+    const lineValue = (field) => ({
+      $sum: {
+        $map: {
+          input: { $ifNull: [field, []] },
+          as: 'l',
+          in: { $multiply: [{ $ifNull: ['$$l.qty', 0] }, { $ifNull: ['$$l.unitPrice', 0] }] }
+        }
+      }
+    });
     const agg = await Operation.aggregate([
       { $match: { date: { $gte: doc.weekStart, $lt: doc.weekEnd } } },
-      { $group: { _id: null, won: { $sum: '$winAmount' }, lost: { $sum: '$lossAmount' } } }
+      {
+        $addFields: {
+          _win: { $add: [{ $ifNull: ['$winAmount', 0] }, lineValue('$wonItems')] },
+          _loss: { $add: [{ $ifNull: ['$lossAmount', 0] }, lineValue('$lostItems')] }
+        }
+      },
+      { $group: { _id: null, won: { $sum: '$_win' }, lost: { $sum: '$_loss' } } }
     ]);
     const wins = agg[0] ? agg[0].won : 0;
     const losses = agg[0] ? agg[0].lost : 0;
