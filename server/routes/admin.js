@@ -469,6 +469,7 @@ router.put(
       'siteName',
       'siteTagline',
       'logoUrl',
+      'bgLogoUrl',
       'motd',
       'weeklyGoal',
       'lockoutEnabled',
