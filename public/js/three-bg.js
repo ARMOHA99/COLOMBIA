@@ -67,13 +67,57 @@ export function initBackground(canvas) {
   emblemGroup.position.set(6, -2, -6);
   scene.add(emblemGroup);
 
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(10.5, 0.045, 8, 120),
-    new THREE.MeshBasicMaterial({ color: 0xd4af37, transparent: true, opacity: 0.16 })
-  );
-  ring.rotation.x = Math.PI / 2.4;
-  ring.position.copy(emblemGroup.position);
-  scene.add(ring);
+    let logoMesh = null;
+  let logoToken = 0;
+  const textureLoader = new THREE.TextureLoader();
+
+  function clearLogo() {
+    if (!logoMesh) return;
+    scene.remove(logoMesh);
+    logoMesh.geometry.dispose();
+    logoMesh.material.map.dispose();
+    logoMesh.material.dispose();
+    logoMesh = null;
+  }
+
+  function setLogo(url) {
+    logoToken += 1;
+    const token = logoToken;
+    if (!url) {
+      clearLogo();
+      emblemGroup.visible = true;
+      ring.visible = true;
+      if (reduced) renderer.render(scene, camera);
+      return;
+    }
+    textureLoader.load(
+      url,
+      (tex) => {
+        if (token !== logoToken) {
+          tex.dispose();
+          return;
+        }
+        clearLogo();
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const img = tex.image;
+        const k = 22 / Math.max(img.width, img.height);
+        logoMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(img.width * k, img.height * k),
+          new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.5, depthWrite: false })
+        );
+        logoMesh.position.set(0, 0, -12);
+        scene.add(logoMesh);
+        emblemGroup.visible = false;
+        ring.visible = false;
+        if (reduced) renderer.render(scene, camera);
+      },
+      undefined,
+      () => {}
+    );
+  }
+
+  setActiveLogo = setLogo;
+  if (pendingLogoUrl) setLogo(pendingLogoUrl);
 
   const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
   const onPointer = (e) => {
@@ -112,6 +156,11 @@ export function initBackground(canvas) {
       emblemGroup.rotation.x = t * 0.08;
       ring.rotation.z = t * 0.1;
       material.opacity = 0.62 + Math.sin(t * 0.9) * 0.14;
+            if (logoMesh) {
+        logoMesh.rotation.y = Math.sin(t * 0.35) * 0.4;
+        logoMesh.position.y = Math.sin(t * 0.6) * 0.8;
+        logoMesh.material.opacity = 0.5 + Math.sin(t * 0.9) * 0.06;
+      }
     }
 
     renderer.render(scene, camera);
@@ -137,6 +186,8 @@ export function initBackground(canvas) {
     window.removeEventListener('pointermove', onPointer);
     window.removeEventListener('resize', onResize);
     document.removeEventListener('visibilitychange', onVisibility);
+    setActiveLogo = null;
+    clearLogo();
     geometry.dispose();
     material.dispose();
     emblem.geometry.dispose();
