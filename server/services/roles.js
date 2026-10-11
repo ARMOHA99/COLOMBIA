@@ -65,6 +65,27 @@ function hasShopDuty(user) {
   return env.roles.shop ? (user.roles || []).includes(env.roles.shop) : user.rank === 'shop';
 }
 
+async function labelFor(roleIds) {
+  const guildRoles = await discord.fetchGuildRoles();
+  if (!guildRoles.length) return '';
+  const mapped = new Set(Object.values(env.roles).filter(Boolean));
+  const mine = guildRoles
+    .filter((r) => (roleIds || []).includes(r.id) && !r.managed && (mapped.has(r.id) || r.hoist))
+    .sort((a, b) => b.position - a.position);
+  return mine[0] ? mine[0].name : '';
+}
+
+function rankNameOf(rank) {
+  const id = env.roles[rank];
+  const role = id ? discord.cachedRole(id) : null;
+  return (role && role.name) || (site.ranks[rank] && site.ranks[rank].label) || rank;
+}
+
+function rankLabelOf(user) {
+  if (!user) return '';
+  return user.roleLabel || rankNameOf(user.rank);
+}
+
 const inflight = new Map();
 
 async function refreshRoles(user, { reason = 'rest-reconcile', actor = null } = {}) {
@@ -87,6 +108,7 @@ async function refreshRoles(user, { reason = 'rest-reconcile', actor = null } = 
 
       user.roles = result.roles || [];
       user.rank = newRank;
+      user.roleLabel = result.left ? '' : await labelFor(user.roles);
       user.rolesCheckedAt = new Date();
 
       if (rolesChanged || oldRank !== newRank) {
@@ -143,12 +165,14 @@ async function reconcileAll() {
     const oldRank = user.rank;
     const newRoles = remote || [];
     const newRank = remote ? rankOf(newRoles) : 'guest';
+    const newLabel = remote ? await labelFor(newRoles) : '';
     const rolesChanged = JSON.stringify([...(user.roles || [])].sort()) !== JSON.stringify([...newRoles].sort());
-    if (!rolesChanged && oldRank === newRank && user.rolesCheckedAt && Date.now() - user.rolesCheckedAt.getTime() < env.security.reconcileMs) {
+    if (!rolesChanged && oldRank === newRank && (user.roleLabel || '') === newLabel && user.rolesCheckedAt && Date.now() - user.rolesCheckedAt.getTime() < env.security.reconcileMs) {
       continue;
     }
     user.roles = newRoles;
     user.rank = newRank;
+    user.roleLabel = newLabel;
     user.rolesCheckedAt = new Date();
     await user.save();
     changed += 1;
@@ -178,6 +202,7 @@ async function reconcileAll() {
     if (existing.rank !== 'guest') continue;
     existing.roles = roles;
     existing.rank = rank;
+    existing.roleLabel = await labelFor(roles);
     existing.rolesCheckedAt = new Date();
     await existing.save();
     changed += 1;
@@ -196,7 +221,7 @@ function publicUser(user) {
     displayName: user.displayName(),
     avatar: user.avatarUrl(128),
     rank: user.rank,
-    rankLabel: (site.ranks[user.rank] && site.ranks[user.rank].label) || user.rank,
+    rankLabel: rankLabelOf(user),
     rankOrder: rankValue(user.rank),
     balance: user.balance,
     inGameId: user.inGameId,
@@ -216,5 +241,8 @@ module.exports = {
   refreshRoles,
   ensureFreshRoles,
   reconcileAll,
-  publicUser
+  publicUser,
+  labelFor,
+  rankNameOf,
+  rankLabelOf
 };
