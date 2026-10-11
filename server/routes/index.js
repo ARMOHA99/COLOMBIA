@@ -62,6 +62,7 @@ router.use('/tickets', require('./tickets'));
 router.use('/shop', require('./shop'));
 router.use('/internal', require('./internalShop'));
 router.use('/leaderboard', require('./leaderboard'));
+router.use('/items', require('./items'));
 router.use('/admin', require('./admin'));
 
 module.exports = router;
