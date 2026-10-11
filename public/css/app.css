@@ -1172,5 +1172,5 @@ body.modal-open {
   .shop-layout, .member-layout { grid-template-columns: minmax(0, 1fr); }
 }
 /* logo */
-.has-logo { background: none !important; box-shadow: none !important; border: none !important; padding: 0; overflow: hidden; }
+.has-logo { display: block !important; background: none !important; box-shadow: none !important; border: none !important; padding: 0; overflow: hidden; }
 .has-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
