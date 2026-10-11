@@ -39,9 +39,20 @@ function serialize(op) {
   };
 }
 
+async function ensureTypes() {
+  if ((await OperationType.estimatedDocumentCount()) > 0) return;
+  const defaults = site.defaults.operationTypes.map((t, i) => ({ key: t.key, label: t.label, color: t.color, sortOrder: i }));
+  try {
+    await OperationType.insertMany(defaults, { ordered: false });
+  } catch (err) {
+    // another request seeded them first
+  }
+}
+
 router.get(
   '/',
   asyncHandler(async (req, res) => {
+    await ensureTypes();
     const [ops, types, target, history] = await Promise.all([
       Operation.find().sort({ date: -1 }).limit(100).populate('participants', 'globalName username avatar rank discordId'),
       OperationType.find({ active: true }).sort({ sortOrder: 1 }),
@@ -73,6 +84,7 @@ router.post(
   asyncHandler(async (req, res) => {
      const { title, typeKey, date, result, participants, notes, winAmount, lossAmount, wonItems, lostItems } = req.body || {};
     if (!title || !typeKey) throw fail(400, site.strings.errors.validation, 'VALIDATION');
+    await ensureTypes();
     const type = await OperationType.findOne({ key: typeKey });
     if (!type) throw fail(400, site.strings.errors.validation, 'VALIDATION');
 
@@ -111,6 +123,7 @@ router.put(
 
     if (title) op.title = String(title).slice(0, 120);
     if (typeKey) {
+      await ensureTypes();
       const type = await OperationType.findOne({ key: typeKey });
       if (!type) throw fail(400, site.strings.errors.validation, 'VALIDATION');
       op.typeKey = type.key;
