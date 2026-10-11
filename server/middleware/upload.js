@@ -42,7 +42,7 @@ function uploadBuffer(buffer, folder = 'colombia') {
       { folder, resource_type: 'image', transformation: [{ quality: 'auto:good', fetch_format: 'auto' }] },
       (error, result) => {
         if (error) {
-          const err = new Error(site.strings.errors.error);
+          const err = new Error(site.strings.errors.server);
           err.status = 502;
           err.code = 'UPLOAD_FAILED';
           return reject(err);
