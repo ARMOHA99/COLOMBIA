@@ -1,5 +1,5 @@
 import { h, icon, badge, emptyState, skeleton, segTabs, modal, confirm, field, input, textarea, select, countUp, bindMagnetic, applyBrandLogo } from '../ui.js';
-import { t, money, fmtDate } from '../state.js';
+import { t, money, fmtDate, rankLabel } from '../state.js';
 import { get, post, put, del } from '../api.js';
 import { setBackgroundLogo } from '../three-bg.js';
 
@@ -260,7 +260,7 @@ export default {
       ));
       const tbody = h('tbody');
       for (const u of users) {
-        const rankSel = select(Object.values(site.ranks).map((r) => ({ value: r.key, label: r.label, selected: r.key === u.rank })));
+        const rankSel = select(Object.values(site.ranks).map((r) => ({ value: r.key, label: rankLabel(r.key), selected: r.key === u.rank })));
         rankSel.style.minWidth = '130px';
         rankSel.addEventListener('change', () => changeRank(u, rankSel.value));
         tbody.appendChild(h('tr', {},
@@ -704,6 +704,7 @@ export default {
       const siteNameI = input({ value: s.siteName || '' });
       const taglineI = input({ value: s.siteTagline || '' });
       const motdI = input({ value: s.motd || '' });
+      const ordersChI = input({ value: s.ordersChannelId || '', placeholder: 'معرّف روم Discord (أرقام فقط)' });
       const noticeI = input({ value: s.shopNotice || '' });
       const goalI = input({ type: 'number', min: '0', value: String(s.weeklyGoal || 0) });
       const plotsI = input({ type: 'number', min: '1', value: String(s.plotsCount || 0) });
@@ -754,6 +755,7 @@ export default {
           logoUrl,
           bgLogoUrl,
           motd: motdI.value.trim(),
+          ordersChannelId: ordersChI.value.trim(),
           shopNotice: noticeI.value.trim(),
           weeklyGoal: Number(goalI.value) || 0,
           plotsCount: Number(plotsI.value) || 0,
@@ -784,6 +786,7 @@ export default {
         ),
         field('شعار الموقع (يظهر مكان CO)', h('div', { class: 'row-wrap' }, logoPreview, logoFileI, logoRemoveBtn), 'PNG شفاف أو مربع يعطي أفضل شكل'),
         field('شعار الخلفية المتحركة (بدل الكوكب)', h('div', { class: 'row-wrap' }, bgPreview, bgFileI, bgRemoveBtn), 'يُفضّل PNG شفاف. اضغط "إرجاع الكوكب" ثم حفظ للعودة للشكل القديم'),                
+        field('روم إشعارات طلبات المتجر في Discord', ordersChI, 'انسخ معرّف الروم (Copy Channel ID) والصقه هنا. اتركه فارغاً لإيقاف الإشعارات'),
         field('MOTD', motdI),
         field(t('shop.title', 'ملاحظة المتجر'), noticeI),
         h('div', { class: 'grid grid-2' },
