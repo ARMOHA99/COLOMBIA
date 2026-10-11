@@ -31,7 +31,8 @@ const env = {
     admin: process.env.ROLE_ADMIN_ID || '',
     ops: process.env.ROLE_OPS_ID || '',
     member: process.env.ROLE_MEMBER_ID || '',
-    shop: process.env.ROLE_SHOP_ID || ''
+    shop: process.env.ROLE_SHOP_ID || '',
+    business: process.env.ROLE_BUSINESS_ID || ''
   },
 
   cloudinary: {
