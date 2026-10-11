@@ -129,7 +129,7 @@ function updateUserChip() {
   els.userChip.append(
     h('img', { src: u.avatar, alt: '' }),
     h('span', { class: 'chip-name', text: u.displayName }),
-    h('span', { class: 'rank-dot', style: { background: rank.color || 'var(--gold)' }, title: rank.label || '' })
+    h('span', { class: 'rank-dot', style: { background: rank.color || 'var(--gold)' }, title: u.rankLabel || rank.label || '' })
   );
   els.drawerUser.innerHTML = '';
   els.drawerUser.append(
@@ -138,7 +138,7 @@ function updateUserChip() {
       'div',
       {},
       h('div', { class: 'du-name', text: u.displayName }),
-      h('div', { class: 'du-rank', text: `${rankLabel(u.rank)} • ${u.balance != null ? u.balance + ' $' : ''}` })
+      h('div', { class: 'du-rank', text: `${u.rankLabel || rankLabel(u.rank)} • ${u.balance != null ? u.balance + ' $' : ''}` })
     )
   );
   els.logoutBtn.innerHTML = `${icon('logout', 17)}<span>${t('common.goodbye', 'تسجيل الخروج')}</span>`;
@@ -320,7 +320,7 @@ function wireGlobalSocketEvents() {
       if (rankChanged) {
         buildNav();
         navigate(defaultRoute());
-        toast(`${t('common.rank', 'الرتبة')}: ${rankLabel(data.rank)}`, 'info');
+        toast(`${t('common.rank', 'الرتبة')}: ${data.rankLabel || rankLabel(data.rank)}`, 'info');
       }
     })
   );
