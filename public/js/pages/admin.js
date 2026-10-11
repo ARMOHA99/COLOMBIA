@@ -13,6 +13,7 @@ export default {
     const errors = site.strings.errors;
     const user = ctx.user;
     const unsubs = [];
+    const businessOnly = user.rank === 'business';
     let tab = 'products';
     let userQuery = '';
     let auditPage = 1;
@@ -21,7 +22,7 @@ export default {
 
     root.appendChild(
       h('div', { class: 'page-head' },
-        h('div', {}, h('h1', { text: S.title }), h('p', { text: `${user.displayName} • ${user.rankLabel}` })),
+        h('div', {}, h('h1', { text: businessOnly ? 'إدارة المتاجر' : S.title }), h('p', { text: `${user.displayName} • ${user.rankLabel}` })),
         h('div', { class: 'page-actions' },
           h('button', { class: 'btn btn-ghost', html: `${icon('refresh', 16)}<span>${t('common.refresh', 'تحديث')}</span>`, onClick: () => activate(tab) })
         )
@@ -35,7 +36,7 @@ export default {
     root.appendChild(tabsHolder);
     root.appendChild(body);
 
-    const TAB_DEFS = [
+    const ALL_TAB_DEFS = [
       { id: 'products', label: S.tabProducts },
       { id: 'users', label: S.tabUsers },
       { id: 'fines', label: S.tabFines },
@@ -45,6 +46,7 @@ export default {
       { id: 'audit', label: S.tabAudit },
       { id: 'settings', label: S.tabSettings }
     ];
+    const TAB_DEFS = businessOnly ? ALL_TAB_DEFS.filter((d) => d.id === 'products' || d.id === 'internal') : ALL_TAB_DEFS;
 
     function jx(v) {
       if (v === undefined || v === null) return '—';
@@ -68,6 +70,7 @@ export default {
     }
 
     async function loadStats() {
+      if (businessOnly) return;
       try {
         const data = await get('/admin/overview');
         const s = data.stats || {};
@@ -272,11 +275,14 @@ export default {
           )),
           h('td', { text: u.inGameId || '—' }),
           h('td', {}, badge(u.banned ? S.ban : S.active, u.banned ? 'var(--danger)' : 'var(--emerald)')),
-          h('td', {}, h('button', {
-            class: u.banned ? 'btn btn-emerald btn-sm' : 'btn btn-danger btn-sm',
-            text: u.banned ? S.unban : S.ban,
-            onClick: () => toggleBan(u)
-          }))
+          h('td', {}, h('div', { class: 'row' },
+            h('button', { class: 'btn btn-ghost btn-sm', html: `${icon('clock', 14)}<span>خصم ساعات</span>`, title: 'خصم ساعات كعقوبة', onClick: () => hoursForm(u) }),
+            h('button', {
+              class: u.banned ? 'btn btn-emerald btn-sm' : 'btn btn-danger btn-sm',
+              text: u.banned ? S.unban : S.ban,
+              onClick: () => toggleBan(u)
+            })
+          ))
         ));
       }
       return h('div', { class: 'table-wrap' }, h('table', {}, thead, tbody));
@@ -321,6 +327,38 @@ export default {
         footer: [
           h('button', { class: 'btn btn-ghost', text: t('common.cancel', 'إلغاء'), onClick: () => self.close() }),
           h('button', { class: 'btn btn-gold', text: t('common.save', 'حفظ'), onClick: submit })
+        ]
+      });
+    }
+
+    function hoursForm(u) {
+      const hoursI = input({ type: 'number', min: '0', step: '0.25', placeholder: 'مثال: 2' });
+      const reasonI = input({ placeholder: 'سبب الخصم (مثال: أون فيك)', maxlength: 300 });
+      let self;
+      async function submit() {
+        const hours = Number(hoursI.value);
+        if (!Number.isFinite(hours) || hours <= 0) {
+          ctx.toast(errors.validation, 'error');
+          return;
+        }
+        try {
+          const res = await post(`/admin/users/${u.id}/hours`, { hours, reason: reasonI.value.trim() });
+          const left = res && Number.isFinite(res.weekMin) ? ` • المتبقي هذا الأسبوع: ${(res.weekMin / 60).toFixed(1)} ساعة` : '';
+          ctx.toast(`تم خصم ${hours} ساعة${left}`, 'success');
+          self.close();
+        } catch (err) {
+          ctx.toast(err.message, 'error');
+        }
+      }
+      self = modal({
+        title: `خصم ساعات • ${u.name}`,
+        content: h('div', {},
+          field('عدد الساعات المخصومة', hoursI, 'تُخصم من ساعات هذا الأسبوع ومن الساعات الإجمالية معاً'),
+          field('السبب', reasonI)
+        ),
+        footer: [
+          h('button', { class: 'btn btn-ghost', text: t('common.cancel', 'إلغاء'), onClick: () => self.close() }),
+          h('button', { class: 'btn btn-danger', text: 'خصم', onClick: submit })
         ]
       });
     }
