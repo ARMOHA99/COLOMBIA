@@ -68,6 +68,7 @@ router.get(
           avatar: profile.avatar || '',
           roles: roleIds,
           rank,
+          roleLabel: await rolesSvc.labelFor(roleIds),
           rolesCheckedAt: new Date(),
           lastSeenAt: new Date()
         },
