@@ -3,6 +3,83 @@ import { t, fmtDate, statusLabel, money } from '../state.js';
 import { get, post, put, del } from '../api.js';
 import * as bus from '../bus.js';
 
+function itemsEditor(catalog, initial) {
+  const byId = new Map(catalog.map((i) => [i.id, i]));
+  const rows = [];
+  const listEl = h('div', { class: 'item-lines' });
+  const totalEl = h('span', { class: 'small muted', text: `القيمة: ${money(0)}` });
+
+  function unitPrice(row) {
+    const id = row.sel.value;
+    if (row.snap && row.snap.itemId === id) return row.snap.unitPrice;
+    const it = byId.get(id);
+    return it ? it.price : 0;
+  }
+
+  function recalc() {
+    const total = rows.reduce((a, r) => a + unitPrice(r) * Math.max(0, Math.floor(Number(r.qty.value) || 0)), 0);
+    totalEl.textContent = `القيمة: ${money(total)}`;
+  }
+
+  function addRow(line) {
+    const options = catalog.map((i) => ({
+      value: i.id,
+      label: `${i.name} — ${money(i.price)}`,
+      selected: line ? line.itemId === i.id : false
+    }));
+    if (line && !byId.has(line.itemId)) options.unshift({ value: line.itemId, label: `${line.name} — ${money(line.unitPrice)}`, selected: true });
+    const sel = select(options);
+    const qty = input({ type: 'number', min: '1', step: '1', value: String(line ? line.qty : 1) });
+    const row = { sel, qty, snap: line || null };
+    const removeBtn = h('button', {
+      class: 'btn btn-danger btn-sm',
+      type: 'button',
+      html: icon('trash', 14),
+      onClick: () => {
+        rows.splice(rows.indexOf(row), 1);
+        lineEl.remove();
+        recalc();
+      }
+    });
+    const lineEl = h('div', { class: 'item-line' }, sel, qty, removeBtn);
+    sel.addEventListener('change', recalc);
+    qty.addEventListener('input', recalc);
+    rows.push(row);
+    listEl.appendChild(lineEl);
+    recalc();
+  }
+
+  (initial || []).forEach((line) => addRow(line));
+
+  const addBtn = h('button', {
+    class: 'btn btn-ghost btn-sm',
+    type: 'button',
+    html: `${icon('plus', 14)}<span>إضافة صنف</span>`,
+    onClick: () => addRow(null)
+  });
+  if (!catalog.length) addBtn.disabled = true;
+
+  const node = h(
+    'div',
+    {},
+    listEl,
+    h('div', { class: 'between mt-1' }, addBtn, totalEl),
+    catalog.length ? null : h('p', { class: 'small muted', text: 'لا توجد أصناف بعد. يضيفها البزنس مانجر من غرفة الأصناف والأسعار.' })
+  );
+
+  return {
+    node,
+    getLines: () =>
+      rows
+        .map((r) => ({ itemId: r.sel.value, qty: Math.floor(Number(r.qty.value) || 0) }))
+        .filter((l) => l.itemId && l.qty > 0)
+  };
+}
+
+function itemsText(lines) {
+  return (lines || []).map((l) => `${l.qty}× ${l.name}`).join('، ');
+}
+
 const RESULT_COLOR = { win: 'var(--emerald)', loss: 'var(--danger)', pending: 'var(--warning)' };
 
 export default {
@@ -27,6 +104,7 @@ export default {
     const isStaff = ctx.rankOrder(ctx.user.rank) >= 3;
     const unsubs = [];
     let members = null;
+    let catalog = null;
     let ops = data.operations.slice();
 
     const head = h(
@@ -114,6 +192,9 @@ export default {
 
     async function openFormAsync(op) {
       const list = await getMembers();
+      const items = await getCatalog();
+      const lostEd = itemsEditor(items, op ? op.lostItems : []);
+      const wonEd = itemsEditor(items, op ? op.wonItems : []);
       const titleI = input({ value: op ? op.title : '', placeholder: strings.title, maxlength: 120 });
       const typeS = select(
         (site.defaults.operationTypes || []).map((tp) => ({ value: tp.key, label: tp.label, selected: op ? op.typeKey === tp.key : false }))
@@ -140,8 +221,10 @@ export default {
         field(t('common.name', 'العنوان'), titleI),
         field(strings.type, typeS),
         field(strings.result, resultS),
-         field('المبلغ الربح ($)', winI),
-        field('المبلغ الخسرة ($)', lossI),
+        field('مبلغ ربح إضافي ($)', winI, 'اختياري، يُجمع مع قيمة الأصناف الرابحة'),
+        field('مبلغ خسارة إضافي ($)', lossI, 'اختياري، يُجمع مع قيمة الأصناف الخاسرة'),
+        field('أصناف خسرها (تُحسب قيمتها تلقائياً)', lostEd.node),
+        field('أصناف ربحها (تُحسب قيمتها تلقائياً)', wonEd.node),
         field(t('common.date', 'التاريخ'), dateI),
         field(strings.participants, partS, strings.selectParticipants),
         field(t('common.notes', 'ملاحظات'), notesI)
@@ -158,6 +241,8 @@ export default {
             result: resultS.value,
             winAmount: Number(winI.value) || 0,
             lossAmount: Number(lossI.value) || 0,
+            lostItems: lostEd.getLines(),
+            wonItems: wonEd.getLines(),
             participants: Array.from(partS.selectedOptions).map((o) => o.value),
             notes: notesI.value.trim()
           };
@@ -184,6 +269,17 @@ export default {
         content,
         footer: [h('button', { class: 'btn btn-ghost', text: t('common.cancel', 'إلغاء'), onClick: () => m.close() }), saveBtn]
       });
+    }
+
+    async function getCatalog() {
+      if (catalog) return catalog;
+      try {
+        const res = await get('/items');
+        catalog = res.items || [];
+      } catch {
+        catalog = [];
+      }
+      return catalog;
     }
 
     async function getMembers() {
@@ -251,7 +347,9 @@ export default {
                 badge(statusLabel('opResult', op.result), RESULT_COLOR[op.result] || 'var(--gold)')
               ),
               h('div', { class: 'tl-sub', text: `${op.typeLabel || ''} • ${fmtDate(op.date)}` }),
-              h('div', { class: 'row-wrap mt-1' }, badge(`ربح: ${money(op.winAmount || 0)}`, 'var(--emerald)'), badge(`خسارة: ${money(op.lossAmount || 0)}`, 'var(--danger)')),
+              h('div', { class: 'row-wrap mt-1' }, badge(`ربح: ${money(op.winTotal !== undefined ? op.winTotal : op.winAmount || 0)}`, 'var(--emerald)'), badge(`خسارة: ${money(op.lossTotal !== undefined ? op.lossTotal : op.lossAmount || 0)}`, 'var(--danger)')),
+              op.lostItems && op.lostItems.length ? h('div', { class: 'small muted', style: { marginTop: '4px' }, text: `خسر: ${itemsText(op.lostItems)}` }) : null,
+              op.wonItems && op.wonItems.length ? h('div', { class: 'small muted', style: { marginTop: '4px' }, text: `ربح: ${itemsText(op.wonItems)}` }) : null,
               op.notes ? h('p', { class: 'small muted', style: { margin: '6px 0 0' }, text: op.notes }) : null,
               h(
                 'div',
