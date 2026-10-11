@@ -23,6 +23,7 @@ const env = {
     clientSecret: process.env.DISCORD_CLIENT_SECRET || '',
     token: process.env.DISCORD_TOKEN || '',
     guildId: process.env.DISCORD_GUILD_ID || '',
+    ordersChannelId: process.env.DISCORD_ORDERS_CHANNEL_ID || '',
     redirectUri: `${(process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/+$/, '')}/api/auth/callback`,
     scopes: ['identify', 'guilds.members.read']
   },
