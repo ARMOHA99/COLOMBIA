@@ -12,7 +12,7 @@ export default {
   async render(root, ctx) {
     root.appendChild(h('div', { class: 'card' }, skeleton(5)));
 
-    const isStaff = ctx.rankOrder(ctx.user.rank) >= 2;
+    const isStaff = ctx.rankOrder(ctx.user.rank) >= 2 || ctx.user.rank === 'business';
     let activeTab = 'mine';
     const unsubs = [];
 
