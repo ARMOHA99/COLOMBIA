@@ -4,12 +4,15 @@ const router = require('express').Router();
 const site = require('../../config/site');
 const env = require('../../config/env');
 const build = require('../services/build');
+const discord = require('../services/discord');
+const rolesSvc = require('../services/roles');
 const { Settings } = require('../models');
 const { asyncHandler } = require('../middleware/errors');
 
 router.get(
   '/site',
   asyncHandler(async (req, res) => {
+    await discord.fetchGuildRoles().catch(() => []);
     let runtime = null;
     try {
       const s = await Settings.getInstance();
@@ -36,6 +39,7 @@ router.get(
       locale: site.locale,
       theme: site.theme,
       ranks: site.ranks,
+      rankNames: Object.fromEntries(Object.keys(site.ranks).map((k) => [k, rolesSvc.rankNameOf(k)])),
       nav: site.nav,
       routesByRank: site.routesByRank,
       strings: site.strings,
