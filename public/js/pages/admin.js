@@ -1,6 +1,7 @@
 import { h, icon, badge, emptyState, skeleton, segTabs, modal, confirm, field, input, textarea, select, countUp, bindMagnetic, applyBrandLogo } from '../ui.js';
 import { t, money, fmtDate } from '../state.js';
 import { get, post, put, del } from '../api.js';
+import { setBackgroundLogo } from '../three-bg.js';
 
 export default {
   id: 'admin',
@@ -687,10 +688,23 @@ export default {
           logoPreview.style.display = 'none';
         }
       });
-
+      let bgLogoUrl = s.bgLogoUrl || '';
+      const bgFileI = h('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp' });
+      const bgPreview = h('img', { src: bgLogoUrl, alt: '', style: { width: '84px', height: '84px', objectFit: 'contain', borderRadius: '16px', background: 'rgba(255,255,255,0.06)', display: bgLogoUrl ? 'block' : 'none' } });
+      const bgRemoveBtn = h('button', {
+        class: 'btn btn-ghost',
+        type: 'button',
+        text: 'إرجاع الكوكب',
+        onClick: () => {
+          bgLogoUrl = '';
+          bgFileI.value = '';
+          bgPreview.style.display = 'none';
+        }
+      });
       async function save() {
           try {
           if (logoFileI.files && logoFileI.files[0]) logoUrl = await uploadImage(logoFileI.files[0]);
+          if (bgFileI.files && bgFileI.files[0]) bgLogoUrl = await uploadImage(bgFileI.files[0]);
         } catch (err) {
           ctx.toast(err.message, 'error');
           return;
@@ -700,6 +714,7 @@ export default {
           siteName: siteNameI.value.trim(),
           siteTagline: taglineI.value.trim(),
           logoUrl,
+          bgLogoUrl,
           motd: motdI.value.trim(),
           shopNotice: noticeI.value.trim(),
           weeklyGoal: Number(goalI.value) || 0,
@@ -715,6 +730,8 @@ export default {
           const res = await put('/admin/settings', payload);
           if (ctx.site.runtime) ctx.site.runtime.logoUrl = logoUrl;
           applyBrandLogo(logoUrl);
+          if (ctx.site.runtime) ctx.site.runtime.bgLogoUrl = bgLogoUrl;
+          setBackgroundLogo(bgLogoUrl);
           ctx.toast((res && res.message) || S.settingsSaved, 'success');
           tabSettings();
         } catch (err) {
@@ -728,6 +745,7 @@ export default {
           field(t('auth.loginSubtitle', 'الوصف المختصر'), taglineI)
         ),
         field('شعار الموقع (يظهر مكان CO)', h('div', { class: 'row-wrap' }, logoPreview, logoFileI, logoRemoveBtn), 'PNG شفاف أو مربع يعطي أفضل شكل'),
+        field('شعار الخلفية المتحركة (بدل الكوكب)', h('div', { class: 'row-wrap' }, bgPreview, bgFileI, bgRemoveBtn), 'يُفضّل PNG شفاف. اضغط "إرجاع الكوكب" ثم حفظ للعودة للشكل القديم'),                
         field('MOTD', motdI),
         field(t('shop.title', 'ملاحظة المتجر'), noticeI),
         h('div', { class: 'grid grid-2' },
