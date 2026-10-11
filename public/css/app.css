@@ -1174,3 +1174,7 @@ body.modal-open {
 /* logo */
 .has-logo { display: block !important; background: none !important; box-shadow: none !important; border: none !important; padding: 0; overflow: hidden; }
 .has-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+/* operation item lines */
+.item-lines { display: flex; flex-direction: column; gap: 8px; }
+.item-line { display: grid; grid-template-columns: minmax(0, 1fr) 90px auto; gap: 8px; align-items: center; }
