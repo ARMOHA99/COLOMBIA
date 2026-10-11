@@ -3,6 +3,7 @@
 const router = require('express').Router();
 const { DutySession, Settings, User } = require('../models');
 const time = require('../utils/time');
+const hoursSvc = require('../services/hours');
 const { asyncHandler, fail } = require('../middleware/errors');
 const { requireAuth, requireRank } = require('../middleware/auth');
 const site = require('../../config/site');
@@ -23,12 +24,13 @@ router.get(
     const todayStart = time.fromZoned(new Date(Date.UTC(z.getUTCFullYear(), z.getUTCMonth(), z.getUTCDate())));
     const week = time.weekBounds();
 
-    const [open, todaySessions, weekSessions, recent, rosterDocs] = await Promise.all([
+    const [open, todaySessions, weekSessions, recent, rosterDocs, weekAdjMin] = await Promise.all([
       DutySession.findOne({ user: req.user._id, open: true }),
       DutySession.find({ user: req.user._id, start: { $gte: todayStart } }),
       DutySession.find({ user: req.user._id, start: { $gte: week.start, $lt: week.end } }),
       DutySession.find({ user: req.user._id }).sort({ start: -1 }).limit(20),
-      DutySession.find({ open: true }).populate('user', 'globalName username avatar rank discordId').limit(50)
+      DutySession.find({ open: true }).populate('user', 'globalName username avatar rank discordId').limit(50),
+      hoursSvc.weekAdjustmentMin(req.user._id)
     ]);
 
     const sum = (list) => list.reduce((a, s) => a + liveMinutes(s), 0);
@@ -38,7 +40,8 @@ router.get(
       since: open ? open.start : null,
       liveMin: open ? liveMinutes(open) : 0,
       todayMin: sum(todaySessions),
-      weekMin: sum(weekSessions),
+      weekMin: Math.max(0, sum(weekSessions) - weekAdjMin),
+      weekPenaltyMin: weekAdjMin,
       sessions: recent.map((s) => ({
         id: String(s._id),
         start: s.start,
