@@ -9,6 +9,10 @@ function notFound(req, res) {
 
 // eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, next) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+    err.code = 'UPLOAD_SIZE';
+    err.status = 413;
+  }
   const status = err.status || (err.name === 'ValidationError' ? 400 : err.name === 'CastError' ? 400 : 500);
   const message =
     err.code === 'UPLOAD_TYPE'
