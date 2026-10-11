@@ -9,6 +9,7 @@ const settingsSchema = new mongoose.Schema(
     siteName: { type: String, default: site.org.nameAr },
     siteTagline: { type: String, default: site.org.tagline },
     logoUrl: { type: String, default: '' },
+    bgLogoUrl: { type: String, default: '' },
     motd: { type: String, default: site.org.motd },
     weeklyGoal: { type: Number, default: site.defaults.weeklyGoal, min: 0 },
     lockoutEnabled: { type: Boolean, default: site.defaults.lockoutEnabled },
