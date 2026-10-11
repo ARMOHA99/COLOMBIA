@@ -5,13 +5,14 @@ const { User, Operation, DutySession, Discipline, InternalPurchase } = require('
 const { asyncHandler } = require('../middleware/errors');
 const { requireAuth, requireRank } = require('../middleware/auth');
 const site = require('../../config/site');
+const hoursSvc = require('../services/hours');
 
 router.use(requireAuth, requireRank('member'));
 
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const [opsPts, dutyPts, users] = await Promise.all([
+    const [opsPts, dutyPts, users, adjMap] = await Promise.all([
       Operation.aggregate([
         { $match: { result: { $in: ['win', 'loss'] } } },
         { $unwind: '$participants' },
@@ -26,7 +27,8 @@ router.get(
       ]),
       DutySession.aggregate([{ $group: { _id: '$user', minutes: { $sum: '$durationMin' } } }]),
       User.find({ rank: { $in: ['member', 'ops', 'admin'] }, banned: false })
-        .select('globalName username avatar rank discordId balance joinedAt')
+        .select('globalName username avatar rank discordId balance joinedAt'),
+      hoursSvc.adjustmentsByUser()
     ]);
 
     const opsMap = new Map(opsPts.map((r) => [String(r._id), r]));
@@ -35,7 +37,8 @@ router.get(
     const rows = users.map((u) => {
       const ops = opsMap.get(String(u._id)) || { wins: 0, losses: 0, ops: 0 };
       const duty = dutyMap.get(String(u._id)) || { minutes: 0 };
-      const dutyHours = Math.round((duty.minutes / 60) * 10) / 10;
+      const dutyMinutes = Math.max(0, duty.minutes - (adjMap.get(String(u._id)) || 0));
+      const dutyHours = Math.round((dutyMinutes / 60) * 10) / 10;
       const opsPoints = ops.wins * 3 + ops.losses;
       const score = opsPoints + Math.floor(dutyHours);
       return {
@@ -89,7 +92,7 @@ router.get(
         { $limit: 12 }
       ])
     ]);
-    const minutes = dutyAgg[0] ? dutyAgg[0].minutes : 0;
+    const minutes = Math.max(0, (dutyAgg[0] ? dutyAgg[0].minutes : 0) - (await hoursSvc.totalAdjustmentMin(user._id)));
     const totalOps = opsCount + missedOps;
     res.json({
       card: {
