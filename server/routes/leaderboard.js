@@ -6,6 +6,7 @@ const { asyncHandler } = require('../middleware/errors');
 const { requireAuth, requireRank } = require('../middleware/auth');
 const site = require('../../config/site');
 const hoursSvc = require('../services/hours');
+const rolesSvc = require('../services/roles');
 
 router.use(requireAuth, requireRank('member'));
 
@@ -27,7 +28,7 @@ router.get(
       ]),
       DutySession.aggregate([{ $group: { _id: '$user', minutes: { $sum: '$durationMin' } } }]),
       User.find({ rank: { $in: ['member', 'ops', 'admin'] }, banned: false })
-        .select('globalName username avatar rank discordId balance joinedAt'),
+        .select('globalName username avatar rank roleLabel discordId balance joinedAt'),
       hoursSvc.adjustmentsByUser()
     ]);
 
@@ -46,7 +47,7 @@ router.get(
         name: u.displayName(),
         avatar: u.avatarUrl(128),
         rank: u.rank,
-        rankLabel: site.ranks[u.rank] ? site.ranks[u.rank].label : u.rank,
+        rankLabel: rolesSvc.rankLabelOf(u),
         wins: ops.wins,
         losses: ops.losses,
         opsCount: ops.ops,
@@ -101,7 +102,7 @@ router.get(
         avatar: user.avatarUrl(256),
         discordId: user.discordId,
         rank: user.rank,
-        rankLabel: site.ranks[user.rank] ? site.ranks[user.rank].label : user.rank,
+        rankLabel: rolesSvc.rankLabelOf(user),
         inGameId: user.inGameId || '—',
         joinedAt: user.joinedAt,
         balance: user.balance,
