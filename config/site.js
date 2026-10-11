@@ -247,8 +247,8 @@ module.exports = {
     },
     attendance: {
       title: 'الدوام والحضور',
-      clockIn: 'بدء الدوام',
-      clockOut: 'إنهاء الدوام',
+      clockIn: 'تسجيل دخول',
+      clockOut: 'تسجيل خروج',
       onDuty: 'أنت الآن على رأس العمل',
       dutySince: 'بدأ الدوام منذ',
       todayMinutes: 'دقائق اليوم',
@@ -259,7 +259,7 @@ module.exports = {
       lockoutActive: 'الدوام مقفول حالياً (ليل)',
       lockoutFrom: 'من',
       lockoutTo: 'إلى',
-      blocked: 'لا يمكن بدء الدوام خلال فترة القفل الليلي',
+      blocked: 'لا يمكن تسجيل الدخول خلال فترة القفل الليلي',
       noSessions: 'لا يوجد سجل دوام بعد',
       duration: 'المدة'
     },
