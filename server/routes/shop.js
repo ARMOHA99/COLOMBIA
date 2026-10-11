@@ -5,7 +5,7 @@ const { Order, Product } = require('../models');
 const rolesSvc = require('../services/roles');
 const bus = require('../services/bus');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRank } = require('../middleware/auth');
+const { requireAuth, requireRank, requireRankOr } = require('../middleware/auth');
 const site = require('../../config/site');
 
 router.use(requireAuth, requireRank('shop'));
@@ -166,7 +166,7 @@ router.put(
 
 router.delete(
   '/orders/:id',
-  requireRank('ops'),
+  requireRankOr('ops', 'business'),
   asyncHandler(async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
