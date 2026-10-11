@@ -14,6 +14,8 @@ module.exports = {
   HarvestLog: require('./HarvestLog'),
   TreasuryEntry: require('./TreasuryEntry'),
   DutySession: require('./DutySession'),
+  HourAdjustment: require('./HourAdjustment'),
+  Item: require('./Item'),
   Discipline: require('./Discipline'),
   Ticket: require('./Ticket'),
   InternalItem: require('./InternalItem'),
