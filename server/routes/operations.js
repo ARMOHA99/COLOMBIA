@@ -1,7 +1,8 @@
 'use strict';
 
 const router = require('express').Router();
-const { Operation, OperationType, User } = require('../models');
+const { Operation, OperationType, User, Item } = require('../models');
+const opItems = require('../services/opItems');
 const targetSvc = require('../services/target');
 const rolesSvc = require('../services/roles');
 const bus = require('../services/bus');
@@ -22,6 +23,10 @@ function serialize(op) {
     result: op.result,
     winAmount: op.winAmount || 0,
     lossAmount: op.lossAmount || 0,
+    wonItems: opItems.serializeLines(op.wonItems),
+    lostItems: opItems.serializeLines(op.lostItems),
+    winTotal: opItems.round2((op.winAmount || 0) + opItems.linesTotal(op.wonItems)),
+    lossTotal: opItems.round2((op.lossAmount || 0) + opItems.linesTotal(op.lostItems)),
     participants: (op.participants || []).filter(Boolean).map((u) => ({
       id: String(u._id),
       name: u.displayName ? u.displayName() : String(u),
@@ -66,7 +71,7 @@ router.post(
   '/',
   requireRank('ops'),
   asyncHandler(async (req, res) => {
-     const { title, typeKey, date, result, participants, notes, winAmount, lossAmount } = req.body || {};
+     const { title, typeKey, date, result, participants, notes, winAmount, lossAmount, wonItems, lostItems } = req.body || {};
     if (!title || !typeKey) throw fail(400, site.strings.errors.validation, 'VALIDATION');
     const type = await OperationType.findOne({ key: typeKey });
     if (!type) throw fail(400, site.strings.errors.validation, 'VALIDATION');
@@ -79,6 +84,8 @@ router.post(
       result: ['win', 'loss', 'pending'].includes(result) ? result : 'pending',
       winAmount: Math.max(0, Number(winAmount) || 0),
       lossAmount: Math.max(0, Number(lossAmount) || 0),
+      wonItems: await opItems.buildLines(Item, wonItems, []),
+      lostItems: await opItems.buildLines(Item, lostItems, []),
       participants: Array.isArray(participants) ? participants.slice(0, 60) : [],
       notes: notes ? String(notes).slice(0, 1000) : '',
       createdBy: req.user._id,
@@ -100,7 +107,7 @@ router.put(
     const op = await Operation.findById(req.params.id);
     if (!op) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
     const before = { title: op.title, result: op.result, typeKey: op.typeKey, participants: op.participants.length };
-    const { title, typeKey, date, result, participants, notes, winAmount, lossAmount } = req.body || {};
+    const { title, typeKey, date, result, participants, notes, winAmount, lossAmount, wonItems, lostItems } = req.body || {};
 
     if (title) op.title = String(title).slice(0, 120);
     if (typeKey) {
@@ -115,6 +122,8 @@ router.put(
     if (notes !== undefined) op.notes = String(notes).slice(0, 1000);
     if (winAmount !== undefined) op.winAmount = Math.max(0, Number(winAmount) || 0);
     if (lossAmount !== undefined) op.lossAmount = Math.max(0, Number(lossAmount) || 0);
+    if (wonItems !== undefined) op.wonItems = await opItems.buildLines(Item, wonItems, op.wonItems);
+    if (lostItems !== undefined) op.lostItems = await opItems.buildLines(Item, lostItems, op.lostItems);
     op.updatedBy = req.user._id;
     await op.save();
 
