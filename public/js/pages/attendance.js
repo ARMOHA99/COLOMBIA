@@ -144,7 +144,7 @@ export default {
               'div',
               { class: 'cell-user' },
               h('img', { src: r.user.avatar, alt: '' }),
-              h('div', {}, h('div', { text: r.user.name }), h('div', { class: 'small muted', text: rankLabel(r.user.rank) }))
+              h('div', {}, h('div', { text: r.user.name }), h('div', { class: 'small muted', text: r.user.rankLabel || rankLabel(r.user.rank) }))
             ),
             h(
               'div',
