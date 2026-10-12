@@ -1,6 +1,7 @@
 import { h, icon, toast, skeleton, emptyState, badge } from '../ui.js';
 import { t, duration, fmtDate, fmtTime, rankLabel } from '../state.js';
 import { get, post } from '../api.js';
+import { openMemberView } from '../member-view.js';
 
 export default {
   id: 'attendance',
@@ -23,6 +24,8 @@ export default {
     const lockout = data.lockout || {};
     let onDuty = Boolean(data.onDuty);
     let since = data.since;
+    let onBreak = Boolean(data.onBreak);
+    const isStaff = ctx.rankOrder(ctx.user.rank) >= 3;
 
     const head = h(
       'div',
@@ -64,7 +67,25 @@ export default {
       }
     });
 
+    const breakBtn = h('button', {
+      class: 'btn btn-ghost',
+      onClick: async () => {
+        breakBtn.disabled = true;
+        try {
+          const res = await post('/attendance/break');
+          toast(res.message || t('common.success', 'تمت العملية بنجاح'), 'info');
+          ctx.navigate('#/attendance');
+        } catch (err) {
+          toast(err.message, 'error');
+          breakBtn.disabled = false;
+        }
+      }
+    });
+
     function paintDuty() {
+      breakBtn.style.display = onDuty ? '' : 'none';
+      breakBtn.innerHTML = `${icon('leaf', 16)}<span>${onBreak ? strings.breakEnd : strings.breakStart}</span>`;
+      breakBtn.className = onBreak ? 'btn btn-emerald' : 'btn btn-ghost';
       clockBtn.className = onDuty ? 'btn btn-danger' : 'btn btn-emerald';
       clockBtn.innerHTML = onDuty
         ? `${icon('clock', 16)}<span>${strings.clockOut}</span>`
@@ -72,7 +93,11 @@ export default {
       clockBtn.disabled = !onDuty && Boolean(lockout.active);
       statusBadge.innerHTML = '';
       statusBadge.appendChild(
-        onDuty ? badge(t('dashboard.onDuty', 'على رأس العمل'), 'var(--emerald)') : badge(t('dashboard.offDuty', 'خارج الخدمة'), 'var(--muted)')
+        onDuty
+          ? onBreak
+            ? badge(strings.breakBadge, 'var(--warning)')
+            : badge(t('dashboard.onDuty', 'على رأس العمل'), 'var(--emerald)')
+          : badge(t('dashboard.offDuty', 'خارج الخدمة'), 'var(--muted)')
       );
       sinceLine.textContent = onDuty && since ? `${strings.dutySince} ${fmtTime(since)}` : '';
       noticeLine.textContent = !onDuty && lockout.active ? strings.blocked : '';
@@ -83,10 +108,10 @@ export default {
       'div',
       { class: 'card' },
       h('div', { class: 'card-title' }, h('span', { text: strings.title }), statusBadge),
-      h('p', { class: onDuty ? 'emerald' : 'muted', text: onDuty ? strings.onDuty : t('dashboard.offDuty', 'خارج الخدمة') }),
+      h('p', { class: onDuty ? (onBreak ? 'muted' : 'emerald') : 'muted', text: onDuty ? (onBreak ? strings.onBreak : strings.onDuty) : t('dashboard.offDuty', 'خارج الخدمة') }),
       sinceLine,
       noticeLine,
-      h('div', { class: 'mt-1' }, clockBtn)
+      h('div', { class: 'row-wrap mt-1' }, clockBtn, breakBtn)
     );
 
     const lockCard = h(
@@ -144,12 +169,18 @@ export default {
               'div',
               { class: 'cell-user' },
               h('img', { src: r.user.avatar, alt: '' }),
-              h('div', {}, h('div', { text: r.user.name }), h('div', { class: 'small muted', text: r.user.rankLabel || rankLabel(r.user.rank) }))
+              h(
+                'div',
+                {},
+                h('div', isStaff ? { class: 'link-name', text: r.user.name, onClick: () => openMemberView(ctx, r.user, { tab: 'attendance' }) } : { text: r.user.name }),
+                h('div', { class: 'small muted', text: r.user.rankLabel || rankLabel(r.user.rank) })
+              )
             ),
             h(
               'div',
               { class: 'row' },
               h('span', { class: 'small muted', text: `${strings.dutySince} ${fmtTime(r.since)}` }),
+              r.onBreak ? badge(strings.breakBadge, 'var(--warning)') : null,
               badge(duration(r.liveMin), 'var(--emerald)')
             )
           )
