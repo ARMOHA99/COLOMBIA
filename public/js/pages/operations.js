@@ -343,7 +343,7 @@ export default {
               h(
                 'div',
                 { class: 'between' },
-                h('strong', { class: 'tl-title', text: op.title }),
+                h('strong', { class: 'tl-title link-name', text: op.title, onClick: () => openDetail(op, isStaff) }),
                 badge(statusLabel('opResult', op.result), RESULT_COLOR[op.result] || 'var(--gold)')
               ),
               h('div', { class: 'tl-sub', text: `${op.typeLabel || ''} • ${fmtDate(op.date)}` }),
@@ -366,6 +366,45 @@ export default {
           )
         );
       }
+    }
+
+    function openDetail(op, canEdit) {
+      const people = op.participants || [];
+      const lineList = (title, lines) =>
+        lines && lines.length
+          ? h(
+              'div',
+              { class: 'mv-section' },
+              h('h4', { text: title }),
+              h('div', { class: 'col' }, ...lines.map((l) => h('div', { class: 'between small' }, h('span', { text: `${l.qty}× ${l.name}` }), h('span', { class: 'muted', text: money(l.total) }))))
+            )
+          : null;
+      const m = modal({
+        title: op.title,
+        wide: true,
+        content: h(
+          'div',
+          { class: 'col' },
+          h('div', { class: 'row-wrap' }, badge(statusLabel('opResult', op.result), RESULT_COLOR[op.result] || 'var(--gold)'), h('span', { class: 'small muted', text: `${op.typeLabel || ''} • ${fmtDate(op.date)}` })),
+          h('div', { class: 'row-wrap' }, badge(`ربح: ${money(op.winTotal)}`, 'var(--emerald)'), badge(`خسارة: ${money(op.lossTotal)}`, 'var(--danger)')),
+          lineList('أصناف خسرها', op.lostItems),
+          lineList('أصناف ربحها', op.wonItems),
+          people.length ? h('div', { class: 'mv-section' }, h('h4', { text: `المشاركون (${people.length})` }), h('div', { class: 'small', text: people.map((p) => p.name).join('، ') })) : null,
+          op.notes ? h('p', { class: 'small muted', text: op.notes }) : null
+        ),
+        footer: canEdit
+          ? [
+              h('button', {
+                class: 'btn btn-gold',
+                html: `${icon('edit', 15)}<span>${t('common.edit', 'تعديل')}</span>`,
+                onClick: () => {
+                  m.close();
+                  openForm(op);
+                }
+              })
+            ]
+          : undefined
+      });
     }
 
     async function refresh() {
@@ -415,6 +454,12 @@ export default {
     paintTarget(data.target);
     paintFeed();
     bindMagnetic(root);
+
+    if (ctx.param) {
+      get(`/operations/${ctx.param}`)
+        .then((res) => openDetail(res.operation, res.canEdit))
+        .catch((err) => toast(err.message, 'error'));
+    }
 
     return () => unsubs.forEach((off) => off());
   }
