@@ -1,10 +1,11 @@
 'use strict';
 
 const router = require('express').Router();
-const { Order, Product } = require('../models');
+const { Order, Product, InternalItem } = require('../models');
 const rolesSvc = require('../services/roles');
 const bus = require('../services/bus');
-const orderNotify = require('../services/orderNotify');
+const discordNotify = require('../services/discordNotify');
+const { serialize } = require('../services/orderSerialize');
 const { asyncHandler, fail } = require('../middleware/errors');
 const { requireAuth, requireRank, requireRankOr } = require('../middleware/auth');
 const site = require('../../config/site');
@@ -24,27 +25,14 @@ function requireShopDuty(req, res, next) {
   return next();
 }
 
-function serialize(o) {
-  return {
-    id: String(o._id),
-    items: (o.items || []).map((i) => ({ name: i.name, price: i.price, qty: i.qty, total: i.price * i.qty })),
-    ingameId: o.ingameId,
-    note: o.note,
-    total: o.total,
-    status: o.status,
-    statusLabel: site.statuses.order[o.status] || o.status,
-    history: (o.history || []).map((h) => ({ status: h.status, label: site.statuses.order[h.status] || h.status, at: h.at })),
-    user: o.user
-      ? {
-          id: String(o.user._id),
-          name: o.user.displayName ? o.user.displayName() : String(o.user),
-          avatar: o.user.avatarUrl ? o.user.avatarUrl(64) : '',
-          rank: o.user.rank
-        }
-      : null,
-    createdAt: o.createdAt,
-    updatedAt: o.updatedAt
-  };
+async function restoreStock(order) {
+  for (const item of order.items) {
+    if (order.kind === 'internal') {
+      if (item.internalItem) await InternalItem.updateOne({ _id: item.internalItem }, { $inc: { stock: item.qty } });
+    } else {
+      await Product.updateOne({ _id: item.product }, { $inc: { stock: item.qty, soldCount: -item.qty } });
+    }
+  }
 }
 
 router.get(
@@ -107,7 +95,7 @@ router.post(
     const payload = serialize(fresh);
     bus.emit('notify', { room: 'scope:shop', event: 'order:new', data: payload });
     bus.emit('notify', { room: `user:${req.user.discordId}`, event: 'order:new', data: payload });
-    orderNotify.notifyNewOrder(fresh, req.user).catch(() => {});
+    discordNotify.notifyNewOrder(fresh, req.user).catch(() => {});
     res.status(201).json({ order: payload, message: site.strings.shop.orderSent });
   })
 );
@@ -115,7 +103,7 @@ router.post(
 router.get(
   '/orders/mine',
   asyncHandler(async (req, res) => {
-    const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(50);
+    const orders = await Order.find({ user: req.user._id, kind: { $ne: 'internal' } }).sort({ createdAt: -1 }).limit(50);
     res.json({ orders: orders.map(serialize) });
   })
 );
@@ -126,6 +114,9 @@ router.get(
     const canSeeAll = rolesSvc.hasShopDuty(req.user);
     const filter = canSeeAll ? {} : { user: req.user._id };
     if (canSeeAll && req.query.status) filter.status = req.query.status;
+    if (canSeeAll && req.query.kind === 'internal') filter.kind = 'internal';
+    if (canSeeAll && req.query.kind === 'shop') filter.kind = { $ne: 'internal' };
+    if (!canSeeAll) filter.kind = { $ne: 'internal' };
     const orders = await Order.find(filter)
       .sort({ createdAt: -1 })
       .limit(100)
@@ -148,9 +139,7 @@ router.put(
 
     const before = order.status;
     if (status === 'cancelled' && order.status !== 'cancelled') {
-      for (const item of order.items) {
-        await Product.updateOne({ _id: item.product }, { $inc: { stock: item.qty, soldCount: -item.qty } });
-      }
+      await restoreStock(order);
     }
     order.status = status;
     order.history.push({ status, at: new Date(), by: req.user._id });
@@ -173,9 +162,7 @@ router.delete(
     const order = await Order.findById(req.params.id);
     if (!order) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
     if (order.status !== 'cancelled' && order.status !== 'delivered') {
-      for (const item of order.items) {
-        await Product.updateOne({ _id: item.product }, { $inc: { stock: item.qty, soldCount: -item.qty } });
-      }
+      await restoreStock(order);
     }
     const snapshot = { items: order.items.map((i) => ({ name: i.name, qty: i.qty })), status: order.status };
     await order.deleteOne();
