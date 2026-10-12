@@ -24,6 +24,12 @@ const env = {
     token: process.env.DISCORD_TOKEN || '',
     guildId: process.env.DISCORD_GUILD_ID || '',
     ordersChannelId: process.env.DISCORD_ORDERS_CHANNEL_ID || '',
+    internalOrdersChannelId: process.env.DISCORD_INTERNAL_ORDERS_CHANNEL_ID || '',
+    operationsChannelId: process.env.DISCORD_OPERATIONS_CHANNEL_ID || '',
+    disciplineChannelId: process.env.DISCORD_DISCIPLINE_CHANNEL_ID || '',
+    staffRoleId: process.env.DISCORD_STAFF_ROLE_ID || '',
+    warnRoleId: process.env.ROLE_WARN_ID || '',
+    fineRoleId: process.env.ROLE_FINE_ID || '',
     redirectUri: `${(process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/+$/, '')}/api/auth/callback`,
     scopes: ['identify', 'guilds.members.read']
   },
