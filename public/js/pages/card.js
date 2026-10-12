@@ -41,7 +41,6 @@ export default {
         'div',
         { class: 'member-info' },
         h('div', { class: 'between' }, h('span', { class: 'muted', text: 'الرقم داخل اللعبة' }), h('strong', { text: String(card.inGameId) })),
-        h('div', { class: 'between' }, h('span', { class: 'muted', text: 'الرصيد' }), h('strong', { class: 'gold', text: money(card.balance) })),
         h('div', { class: 'between' }, h('span', { class: 'muted', text: 'تاريخ الانضمام' }), h('strong', { text: fmtDate(card.joinedAt, false) }))
       )
     );
