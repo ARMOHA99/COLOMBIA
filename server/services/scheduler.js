@@ -5,6 +5,7 @@ const target = require('./target');
 const roles = require('./roles');
 const logger = require('./logger');
 const { DutySession } = require('../models');
+const duty = require('./duty');
 
 const timers = [];
 const every = (fn, ms, label) => {
@@ -20,7 +21,8 @@ async function closeStaleDutySessions() {
   const stale = await DutySession.find({ open: true, start: { $lt: cutoff } });
   for (const s of stale) {
     s.end = new Date(s.start.getTime() + 12 * 60 * 60 * 1000);
-    s.durationMin = 720;
+    duty.closeOpenBreak(s, s.end);
+    s.durationMin = duty.netMinutes(s);
     s.open = false;
     await s.save();
   }
