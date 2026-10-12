@@ -8,11 +8,13 @@ const orderSchema = new mongoose.Schema(
     items: [
       {
         product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+        internalItem: { type: mongoose.Schema.Types.ObjectId, ref: 'InternalItem' },
         name: { type: String, required: true },
         price: { type: Number, required: true, min: 0 },
         qty: { type: Number, required: true, min: 1 }
       }
     ],
+    kind: { type: String, enum: ['shop', 'internal'], default: 'shop', index: true },
     ingameId: { type: String, required: true, trim: true },
     note: { type: String, default: '', maxlength: 500 },
     total: { type: Number, default: 0 },
