@@ -2,6 +2,7 @@ import { h, icon, badge, emptyState, skeleton, segTabs, modal, confirm, field, i
 import { t, money, fmtDate, rankLabel } from '../state.js';
 import { get, post, put, del } from '../api.js';
 import { setBackgroundLogo } from '../three-bg.js';
+import { openMemberView } from '../member-view.js';
 
 export default {
   id: 'admin',
@@ -253,7 +254,6 @@ export default {
       const thead = h('thead', {}, h('tr', {},
         h('th', { text: t('common.member', 'العضو') }),
         h('th', { text: t('common.rank', 'الرتبة') }),
-        h('th', { text: t('common.balance', 'الرصيد') }),
         h('th', { text: t('idCard.inGameId', 'الرقم الداخلي') }),
         h('th', { text: t('common.status', 'الحالة') }),
         h('th', { text: t('common.actions', 'إجراءات') })
@@ -266,13 +266,9 @@ export default {
         tbody.appendChild(h('tr', {},
           h('td', {}, h('div', { class: 'cell-user' },
             h('img', { src: u.avatar, alt: '' }),
-            h('div', {}, h('strong', { text: u.name }), h('div', { class: 'small muted', text: u.discordId }))
+            h('div', {}, h('strong', { class: 'link-name', title: 'عرض البطاقة وسجل الحضور', text: u.name, onClick: () => openMemberView(ctx, u) }), h('div', { class: 'small muted', text: u.discordId }))
           )),
           h('td', {}, rankSel),
-          h('td', {}, h('div', { class: 'row' },
-            h('span', { class: 'gold', text: money(u.balance) }),
-            h('button', { class: 'icon-btn', title: S.balanceAdjust, html: icon('coins', 15), onClick: () => balanceForm(u) })
-          )),
           h('td', { text: u.inGameId || '—' }),
           h('td', {}, badge(u.banned ? S.ban : S.active, u.banned ? 'var(--danger)' : 'var(--emerald)')),
           h('td', {}, h('div', { class: 'row' },
@@ -296,39 +292,6 @@ export default {
         ctx.toast(err.message, 'error');
       }
       tabUsers();
-    }
-
-    function balanceForm(u) {
-      const amountI = input({ type: 'number', step: '0.01', placeholder: '0' });
-      const reasonI = input({ placeholder: S.adjustReason });
-      let self;
-      async function submit() {
-        const delta = Number(amountI.value) || 0;
-        if (!delta) {
-          ctx.toast(errors.validation, 'error');
-          return;
-        }
-        try {
-          await put(`/admin/users/${u.id}/balance`, { delta, reason: reasonI.value.trim() });
-          ctx.toast(t('common.success', 'تمت العملية بنجاح'), 'success');
-          self.close();
-          tabUsers();
-        } catch (err) {
-          ctx.toast(err.message, 'error');
-        }
-      }
-      self = modal({
-        title: `${S.balanceAdjust} • ${u.name}`,
-        content: h('div', {},
-          field(t('common.balance', 'الرصيد'), h('div', { class: 'gold', text: money(u.balance) })),
-          field(t('treasury.amount', 'المبلغ'), amountI, t('admin.balanceHint', 'قيمة موجبة للإضافة، سالبة للخصم')),
-          field(S.adjustReason, reasonI)
-        ),
-        footer: [
-          h('button', { class: 'btn btn-ghost', text: t('common.cancel', 'إلغاء'), onClick: () => self.close() }),
-          h('button', { class: 'btn btn-gold', text: t('common.save', 'حفظ'), onClick: submit })
-        ]
-      });
     }
 
     function hoursForm(u) {
@@ -704,7 +667,14 @@ export default {
       const siteNameI = input({ value: s.siteName || '' });
       const taglineI = input({ value: s.siteTagline || '' });
       const motdI = input({ value: s.motd || '' });
-      const ordersChI = input({ value: s.ordersChannelId || '', placeholder: 'معرّف روم Discord (أرقام فقط)' });
+      const idInput = (key) => input({ value: s[key] || '', placeholder: 'المعرّف (أرقام فقط)' });
+      const ordersChI = idInput('ordersChannelId');
+      const internalOrdersChI = idInput('internalOrdersChannelId');
+      const operationsChI = idInput('operationsChannelId');
+      const disciplineChI = idInput('disciplineChannelId');
+      const staffRoleI = idInput('staffRoleId');
+      const warnRoleI = idInput('warnRoleId');
+      const fineRoleI = idInput('fineRoleId');
       const noticeI = input({ value: s.shopNotice || '' });
       const goalI = input({ type: 'number', min: '0', value: String(s.weeklyGoal || 0) });
       const plotsI = input({ type: 'number', min: '1', value: String(s.plotsCount || 0) });
@@ -756,6 +726,12 @@ export default {
           bgLogoUrl,
           motd: motdI.value.trim(),
           ordersChannelId: ordersChI.value.trim(),
+          internalOrdersChannelId: internalOrdersChI.value.trim(),
+          operationsChannelId: operationsChI.value.trim(),
+          disciplineChannelId: disciplineChI.value.trim(),
+          staffRoleId: staffRoleI.value.trim(),
+          warnRoleId: warnRoleI.value.trim(),
+          fineRoleId: fineRoleI.value.trim(),
           shopNotice: noticeI.value.trim(),
           weeklyGoal: Number(goalI.value) || 0,
           plotsCount: Number(plotsI.value) || 0,
@@ -786,7 +762,13 @@ export default {
         ),
         field('شعار الموقع (يظهر مكان CO)', h('div', { class: 'row-wrap' }, logoPreview, logoFileI, logoRemoveBtn), 'PNG شفاف أو مربع يعطي أفضل شكل'),
         field('شعار الخلفية المتحركة (بدل الكوكب)', h('div', { class: 'row-wrap' }, bgPreview, bgFileI, bgRemoveBtn), 'يُفضّل PNG شفاف. اضغط "إرجاع الكوكب" ثم حفظ للعودة للشكل القديم'),                
-        field('روم إشعارات طلبات المتجر في Discord', ordersChI, 'انسخ معرّف الروم (Copy Channel ID) والصقه هنا. اتركه فارغاً لإيقاف الإشعارات'),
+        field('روم طلبات المتجر في Discord', ordersChI, 'انسخ معرّف الروم (Copy Channel ID). اتركه فارغاً لإيقاف الإشعارات'),
+        field('روم طلبات متجر الأعضاء', internalOrdersChI, 'إن تُرك فارغاً تُرسل طلبات الأعضاء إلى روم المتجر'),
+        field('روم العمليات', operationsChI, 'يرسل البوت كل عملية جديدة مع رابط مباشر لها'),
+        field('روم الإنذارات والغرامات', disciplineChI, 'يذكر البوت العضو (منشن) عند إنذاره أو تغريمه'),
+        field('رول الإداريين (للمنشن عند الطلبات)', staffRoleI, 'معرّف الرول الذي يُذكر عند وصول طلب جديد'),
+        field('رول الإنذار', warnRoleI, 'يُعطى للعضو عند الإنذار ويُسحب عند حذف إنذاراته'),
+        field('رول الغرامة', fineRoleI, 'يُعطى للعضو عند الغرامة ويُسحب عند حذف غراماته'),
         field('MOTD', motdI),
         field(t('shop.title', 'ملاحظة المتجر'), noticeI),
         h('div', { class: 'grid grid-2' },
