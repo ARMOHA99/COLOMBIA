@@ -1,4 +1,4 @@
-import { h, icon, toast, modal, skeleton, emptyState, badge, field, input, textarea } from '../ui.js';
+import { h, icon, toast, confirm, skeleton, emptyState, badge } from '../ui.js';
 import { t, fmtDate, statusLabel } from '../state.js';
 import { get, post } from '../api.js';
 import * as bus from '../bus.js';
@@ -170,49 +170,30 @@ export default {
       paintCart();
     }
 
-    function checkout() {
+    async function checkout() {
       if (!cart.length) return;
-      const radio = input({ type: 'text', placeholder: 'مثال: 1024', maxlength: 32 });
-      const note = textarea({ placeholder: t('shop.orderNotePlaceholder', 'أي تفاصيل إضافية...') });
-      const body = h('div', {}, field(t('shop.inGameId', 'أدخل رقم الراديو الخاص بك'), radio), field(t('shop.orderNote', 'ملاحظات للطلب (اختياري)'), note));
-      const submit = h('button', { class: 'btn btn-gold', html: `${icon('check', 16)}<span>${t('shop.orderNow', 'اطلب الآن')}</span>` });
-      const m = modal({
-        title: t('shop.checkout', 'إتمام الطلب'),
-        content: body,
-        footer: [h('button', { class: 'btn btn-ghost', text: t('common.cancel', 'إلغاء'), onClick: () => m.close() }), submit]
-      });
-      submit.addEventListener('click', async () => {
-        const ingameId = String(radio.value || '').trim();
-        if (!ingameId) {
-          toast(t('common.required', 'هذا الحقل مطلوب'), 'error');
-          return;
-        }
-        submit.disabled = true;
-        try {
-          const res = await post('/internal/orders', {
-            items: cart.map((c) => ({ itemId: c.id, qty: c.qty })),
-            ingameId,
-            note: String(note.value || '').trim()
-          });
-          toast(res.message || strings.orderSent, 'success');
-          cart.forEach((c) => {
-            const it = items.find((i) => i.id === c.id);
-            if (it) {
-              it.stock = Math.max(0, it.stock - c.qty);
-              it.out = it.stock <= 0;
-            }
-          });
-          cart = [];
-          paintCart();
-          paintItems();
-          m.close();
-          await reloadOrders();
-        } catch (err) {
-          toast(err.message, 'error');
-        } finally {
-          submit.disabled = false;
-        }
-      });
+      const summary = cart.map((c) => `${c.qty}× ${c.name}`).join('، ');
+      const ok = await confirm(`تأكيد الطلب: ${summary}`, { okText: t('shop.orderNow', 'اطلب الآن') });
+      if (!ok) return;
+      checkoutBtn.disabled = true;
+      try {
+        const res = await post('/internal/orders', { items: cart.map((c) => ({ itemId: c.id, qty: c.qty })) });
+        toast(res.message || strings.orderSent, 'success');
+        cart.forEach((c) => {
+          const it = items.find((i) => i.id === c.id);
+          if (it) {
+            it.stock = Math.max(0, it.stock - c.qty);
+            it.out = it.stock <= 0;
+          }
+        });
+        cart = [];
+        paintCart();
+        paintItems();
+        await reloadOrders();
+      } catch (err) {
+        toast(err.message, 'error');
+        checkoutBtn.disabled = !cart.length;
+      }
     }
 
     const cartCard = h(
