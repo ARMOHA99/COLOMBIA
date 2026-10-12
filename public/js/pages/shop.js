@@ -203,12 +203,12 @@ export default {
 
     function checkout() {
       if (!cart.length) return;
-      const ingame = input({ type: 'number', min: '1', placeholder: t('shop.inGameIdPlaceholder', 'مثال: 1024'), value: ctx.user.inGameId || '' });
+      const ingame = input({ type: 'text', maxlength: 32, placeholder: t('shop.inGameIdPlaceholder', 'مثال: 1024') });
       const note = textarea({ placeholder: t('shop.orderNotePlaceholder', 'أي تفاصيل إضافية...') });
       const body = h(
         'div',
         {},
-        field(t('shop.inGameId', 'الرقم الداخلي داخل اللعبة'), ingame),
+        field(t('shop.inGameId', 'أدخل رقم الراديو الخاص بك'), ingame),
         field(t('shop.orderNote', 'ملاحظات للطلب (اختياري)'), note)
       );
       const submit = h('button', {
