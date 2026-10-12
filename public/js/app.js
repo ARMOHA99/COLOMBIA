@@ -138,7 +138,7 @@ function updateUserChip() {
       'div',
       {},
       h('div', { class: 'du-name', text: u.displayName }),
-      h('div', { class: 'du-rank', text: `${u.rankLabel || rankLabel(u.rank)} • ${u.balance != null ? u.balance + ' $' : ''}` })
+      h('div', { class: 'du-rank', text: u.rankLabel || rankLabel(u.rank) })
     )
   );
   els.logoutBtn.innerHTML = `${icon('logout', 17)}<span>${t('common.goodbye', 'تسجيل الخروج')}</span>`;
@@ -168,8 +168,9 @@ function setActiveNav(pageId) {
 function parseHash() {
   const raw = (location.hash || '#/dashboard').slice(1);
   const [pathPart, queryPart] = raw.split('?');
-  const page = pathPart.replace(/^\/+/, '').split('/')[0] || 'dashboard';
-  return { page, query: new URLSearchParams(queryPart || ''), raw };
+  const segments = pathPart.replace(/^\/+/, '').split('/');
+  const page = segments[0] || 'dashboard';
+  return { page, param: segments[1] || '', query: new URLSearchParams(queryPart || ''), raw };
 }
 
 function navigate(hash) {
@@ -183,7 +184,7 @@ function defaultRoute() {
 
 async function renderRoute() {
   if (!state.user) return;
-  let { page, query } = parseHash();
+  let { page, query, param } = parseHash();
 
   if (page === 'login') {
     navigate(defaultRoute());
@@ -243,7 +244,7 @@ async function renderRoute() {
   currentPage = page;
 
   try {
-    const cleanup = await mod.default.render(container, makeCtx(query));
+    const cleanup = await mod.default.render(container, makeCtx(query, param));
     if (typeof cleanup === 'function') pageCleanup = cleanup;
   } catch (err) {
     console.error('page render failed', err);
@@ -260,8 +261,9 @@ function pageIdSafe(page) {
   return page;
 }
 
-function makeCtx(query) {
+function makeCtx(query, param) {
   return {
+    param: param || '',
     get user() {
       return state.user;
     },
