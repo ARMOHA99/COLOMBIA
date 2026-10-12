@@ -1,8 +1,13 @@
-import { h, icon, toast, confirm, skeleton, emptyState, badge } from '../ui.js';
-import { t, money, fmtDate } from '../state.js';
+import { h, icon, toast, modal, skeleton, emptyState, badge, field, input, textarea } from '../ui.js';
+import { t, fmtDate, statusLabel } from '../state.js';
 import { get, post } from '../api.js';
+import * as bus from '../bus.js';
 
-function thumb(src, name, height = 140) {
+const STATUS_COLOR = { new: 'var(--info)', preparing: 'var(--warning)', delivered: 'var(--emerald)', cancelled: 'var(--danger)' };
+
+let cart = [];
+
+function thumb(src, name, height = 150) {
   if (src) {
     return h('img', {
       src,
@@ -34,11 +39,11 @@ export default {
     root.appendChild(h('div', { class: 'card' }, skeleton(5)));
 
     let itemsData;
-    let purchasesData;
+    let ordersData;
     try {
-      const res = await Promise.all([get('/internal/items'), get('/internal/purchases/mine')]);
+      const res = await Promise.all([get('/internal/items'), get('/internal/orders/mine')]);
       itemsData = res[0];
-      purchasesData = res[1];
+      ordersData = res[1];
     } catch (err) {
       root.innerHTML = '';
       root.appendChild(h('div', { class: 'card' }, h('p', { class: 'danger-text', text: err.message })));
@@ -47,113 +52,220 @@ export default {
     root.innerHTML = '';
 
     const strings = ctx.site.strings.internalShop;
-    const itemsGrid = h('div', { class: 'grid grid-auto' });
-    const purchasesList = h('div', { class: 'col' });
-    const balancePill = h('span', { class: 'pill gold', text: money(itemsData.balance != null ? itemsData.balance : ctx.user.balance) });
+    const items = itemsData.items || [];
+    let myOrders = ordersData.orders || [];
 
-    function itemCard(item) {
-      const buyBtn = h('button', {
+    root.appendChild(h('div', { class: 'page-head' }, h('div', {}, h('h1', { text: strings.title }), h('p', { text: strings.subtitle }))));
+
+    const grid = h('div', { class: 'shop-grid' });
+
+    function itemCard(p) {
+      const addBtn = h('button', {
         class: 'btn btn-gold btn-sm',
-        disabled: item.out,
-        html: `${icon('cart', 15)}<span>${t('internalShop.buy', 'شراء')}</span>`,
-        onClick: () => buy(item, buyBtn)
+        disabled: p.out,
+        html: `${icon('cart', 15)}<span>${t('shop.addToCart', 'أضف للسلة')}</span>`,
+        onClick: () => addToCart(p)
       });
       return h(
         'div',
         { class: 'card', style: { padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' } },
-        thumb(item.imageUrl, item.name, 140),
+        thumb(p.imageUrl, p.name, 200),
         h(
           'div',
           { class: 'between' },
-          h('strong', { text: item.name }),
-          item.out
-            ? badge(t('shop.outOfStock', 'نفذ'), 'var(--danger)')
-            : badge(`${t('shop.stock', 'المخزون')}: ${item.stock}`, 'var(--emerald)')
+          h('strong', { text: p.name }),
+          p.out ? badge(t('shop.outOfStock', 'نفذ'), 'var(--danger)') : badge(`${t('shop.stock', 'المخزون')}: ${p.stock}`, 'var(--emerald)')
         ),
-        item.description ? h('p', { class: 'small muted', style: { margin: 0 }, text: item.description }) : null,
-        h('div', { class: 'between' }, h('span', { class: 'gold', text: money(item.price) }), buyBtn)
+        p.description ? h('p', { class: 'small muted', style: { margin: 0 }, text: p.description }) : null,
+        h('div', { class: 'row-wrap' }, addBtn)
       );
     }
 
-    function paintItems(list) {
-      itemsGrid.innerHTML = '';
-      if (!list.length) {
-        itemsGrid.appendChild(emptyState(t('internalShop.noItems', 'لا توجد عناصر متاحة حالياً'), 'cart'));
+    function paintItems() {
+      grid.innerHTML = '';
+      if (!items.length) {
+        grid.appendChild(emptyState(strings.noItems, 'box'));
         return;
       }
-      for (const item of list) itemsGrid.appendChild(itemCard(item));
+      for (const p of items) grid.appendChild(itemCard(p));
     }
 
-    function paintPurchases(list) {
-      purchasesList.innerHTML = '';
-      if (!list.length) {
-        purchasesList.appendChild(emptyState(t('internalShop.noPurchases', 'لا توجد مشتريات'), 'receipt'));
+    const itemsCard = h('div', { class: 'card' }, h('div', { class: 'card-title' }, h('span', { text: strings.title })), grid);
+
+    const cartBody = h('div', { class: 'col' });
+    const cartCount = h('span', { class: 'small muted', text: '0' });
+    const checkoutBtn = h('button', {
+      class: 'btn btn-gold btn-block',
+      disabled: true,
+      html: `${icon('check', 16)}<span>${t('shop.checkout', 'إتمام الطلب')}</span>`,
+      onClick: () => checkout()
+    });
+    const clearBtn = h('button', {
+      class: 'btn btn-ghost btn-sm',
+      html: `${icon('trash', 15)}<span>${t('shop.clearCart', 'تفريغ السلة')}</span>`,
+      onClick: () => {
+        cart = [];
+        paintCart();
+      }
+    });
+
+    function cartRow(item) {
+      const minus = h('button', {
+        class: 'btn btn-ghost btn-sm',
+        text: '−',
+        disabled: item.qty <= 1,
+        onClick: () => {
+          item.qty -= 1;
+          paintCart();
+        }
+      });
+      const plus = h('button', {
+        class: 'btn btn-ghost btn-sm',
+        text: '+',
+        disabled: item.qty >= item.stock,
+        onClick: () => {
+          item.qty += 1;
+          paintCart();
+        }
+      });
+      const remove = h('button', {
+        class: 'icon-btn',
+        style: { width: '34px', height: '34px' },
+        html: icon('trash', 15),
+        onClick: () => {
+          cart = cart.filter((c) => c.id !== item.id);
+          paintCart();
+        }
+      });
+      return h(
+        'div',
+        { class: 'between', style: { gap: '8px', padding: '8px 0', borderBottom: '1px solid var(--border-soft)' } },
+        h('strong', { class: 'small', text: item.name }),
+        h('div', { class: 'row', style: { gap: '6px' } }, minus, h('span', { class: 'small', text: String(item.qty) }), plus, remove)
+      );
+    }
+
+    function paintCart() {
+      cartBody.innerHTML = '';
+      if (!cart.length) cartBody.appendChild(emptyState(t('shop.cartEmpty', 'سلتك فارغة'), 'cart'));
+      else for (const item of cart) cartBody.appendChild(cartRow(item));
+      const count = cart.reduce((a, i) => a + i.qty, 0);
+      cartCount.textContent = `${count} ${t('shop.itemsInCart', 'عناصر في السلة')}`;
+      checkoutBtn.disabled = !cart.length;
+    }
+
+    function addToCart(p) {
+      if (p.out || p.stock <= 0) {
+        toast(t('shop.outOfStock', 'نفذ'), 'error');
         return;
       }
-      for (const p of list) {
-        purchasesList.appendChild(
+      const existing = cart.find((c) => c.id === p.id);
+      const nextQty = existing ? existing.qty + 1 : 1;
+      if (nextQty > p.stock) {
+        toast(t('shop.outOfStock', 'نفذ'), 'warn');
+        return;
+      }
+      if (existing) existing.qty = nextQty;
+      else cart.push({ id: p.id, name: p.name, qty: 1, stock: p.stock });
+      paintCart();
+    }
+
+    function checkout() {
+      if (!cart.length) return;
+      const radio = input({ type: 'text', placeholder: 'مثال: 1024', maxlength: 32 });
+      const note = textarea({ placeholder: t('shop.orderNotePlaceholder', 'أي تفاصيل إضافية...') });
+      const body = h('div', {}, field(t('shop.inGameId', 'أدخل رقم الراديو الخاص بك'), radio), field(t('shop.orderNote', 'ملاحظات للطلب (اختياري)'), note));
+      const submit = h('button', { class: 'btn btn-gold', html: `${icon('check', 16)}<span>${t('shop.orderNow', 'اطلب الآن')}</span>` });
+      const m = modal({
+        title: t('shop.checkout', 'إتمام الطلب'),
+        content: body,
+        footer: [h('button', { class: 'btn btn-ghost', text: t('common.cancel', 'إلغاء'), onClick: () => m.close() }), submit]
+      });
+      submit.addEventListener('click', async () => {
+        const ingameId = String(radio.value || '').trim();
+        if (!ingameId) {
+          toast(t('common.required', 'هذا الحقل مطلوب'), 'error');
+          return;
+        }
+        submit.disabled = true;
+        try {
+          const res = await post('/internal/orders', {
+            items: cart.map((c) => ({ itemId: c.id, qty: c.qty })),
+            ingameId,
+            note: String(note.value || '').trim()
+          });
+          toast(res.message || strings.orderSent, 'success');
+          cart.forEach((c) => {
+            const it = items.find((i) => i.id === c.id);
+            if (it) {
+              it.stock = Math.max(0, it.stock - c.qty);
+              it.out = it.stock <= 0;
+            }
+          });
+          cart = [];
+          paintCart();
+          paintItems();
+          m.close();
+          await reloadOrders();
+        } catch (err) {
+          toast(err.message, 'error');
+        } finally {
+          submit.disabled = false;
+        }
+      });
+    }
+
+    const cartCard = h(
+      'div',
+      { class: 'card' },
+      h('div', { class: 'card-title' }, h('span', { html: `${icon('cart', 16)}<span>${t('shop.cart', 'سلة الطلب')}</span>` }), cartCount),
+      cartBody,
+      h('div', { class: 'row-wrap mt-1' }, checkoutBtn, clearBtn)
+    );
+
+    const ordersBody = h('div', { class: 'col' });
+    function paintOrders() {
+      ordersBody.innerHTML = '';
+      if (!myOrders.length) {
+        ordersBody.appendChild(emptyState(strings.noOrders, 'receipt'));
+        return;
+      }
+      for (const o of myOrders) {
+        ordersBody.appendChild(
           h(
             'div',
-            { class: 'between', style: { padding: '8px 0', borderBottom: '1px solid var(--border-soft)' } },
+            { class: 'mv-row' },
             h(
               'div',
-              { class: 'col', style: { gap: '2px' } },
-              h('strong', { class: 'small', text: `${p.itemName} × ${p.qty}` }),
-              h('span', { class: 'small muted', text: fmtDate(p.createdAt) })
+              { class: 'between' },
+              h('strong', { text: `#${String(o.id).slice(-6)}` }),
+              badge(statusLabel('order', o.status), STATUS_COLOR[o.status] || 'var(--gold)')
             ),
-            h('span', { class: 'gold', text: money(p.total) })
+            h('div', { class: 'small', text: (o.items || []).map((i) => `${i.qty}× ${i.name}`).join('، ') }),
+            h('div', { class: 'small muted', text: fmtDate(o.createdAt) })
           )
         );
       }
     }
 
-    async function buy(item, btn) {
-      if (!(await confirm(t('internalShop.buyConfirm', 'هل تريد شراء هذا العنصر؟')))) return;
-      btn.disabled = true;
+    async function reloadOrders() {
       try {
-        const res = await post('/internal/purchase', { itemId: item.id, qty: 1 });
-        toast(res.message || t('internalShop.purchased', 'تم الشراء بنجاح'), 'success');
-        await ctx.refreshUser();
-        await reload();
-      } catch (err) {
-        if (err.code === 'INSUFFICIENT') toast(t('internalShop.insufficient', 'رصيدك غير كافٍ لإتمام الشراء'), 'error');
-        else toast(err.message || t('internalShop.insufficient', 'رصيدك غير كافٍ لإتمام الشراء'), 'error');
-      }
-    }
-
-    async function reload() {
-      try {
-        const res = await Promise.all([get('/internal/items'), get('/internal/purchases/mine')]);
-        itemsData = res[0];
-        purchasesData = res[1];
-        paintItems(itemsData.items || []);
-        paintPurchases(purchasesData.purchases || []);
-        const bal = itemsData.balance != null ? itemsData.balance : purchasesData.balance;
-        if (bal != null) balancePill.textContent = money(bal);
+        const res = await get('/internal/orders/mine');
+        myOrders = res.orders || [];
+        paintOrders();
       } catch (err) {
         toast(err.message, 'error');
       }
     }
 
-    root.appendChild(
-      h(
-        'div',
-        { class: 'page-head' },
-        h('div', {}, h('h1', { text: strings.title }), h('p', { text: strings.subtitle })),
-        h('div', { class: 'page-actions' }, h('span', { class: 'small muted', text: t('common.balance', 'الرصيد') }), balancePill)
-      )
-    );
+    paintItems();
+    paintCart();
+    paintOrders();
 
-    root.appendChild(
-      h(
-        'div',
-        { class: 'grid grid-2' },
-        h('div', { class: 'card' }, h('div', { class: 'card-title' }, h('span', { text: strings.title })), itemsGrid),
-        h('div', { class: 'card' }, h('div', { class: 'card-title' }, h('span', { text: strings.myPurchases })), purchasesList)
-      )
-    );
+    root.appendChild(h('div', { class: 'shop-layout' }, itemsCard, cartCard));
+    root.appendChild(h('div', { class: 'card mt-2' }, h('div', { class: 'card-title' }, h('span', { text: strings.myOrders })), ordersBody));
 
-    paintItems(itemsData.items || []);
-    paintPurchases(purchasesData.purchases || []);
+    const offStatus = bus.on('order:status', () => reloadOrders());
+    return () => offStatus();
   }
 };
