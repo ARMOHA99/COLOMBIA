@@ -64,7 +64,7 @@ router.get(
       {
         $set: {
           username: profile.username || '',
-          globalName: profile.global_name || profile.username || '',
+          globalName: member.nick || profile.global_name || profile.username || '',
           avatar: profile.avatar || '',
           roles: roleIds,
           rank,
