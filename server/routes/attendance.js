@@ -5,6 +5,8 @@ const { DutySession, Settings, User } = require('../models');
 const time = require('../utils/time');
 const hoursSvc = require('../services/hours');
 const rolesSvc = require('../services/roles');
+const duty = require('../services/duty');
+const memberCard = require('../services/memberCard');
 const { asyncHandler, fail } = require('../middleware/errors');
 const { requireAuth, requireRank } = require('../middleware/auth');
 const site = require('../../config/site');
@@ -12,8 +14,7 @@ const site = require('../../config/site');
 router.use(requireAuth, requireRank('member'));
 
 function liveMinutes(session) {
-  const end = session.end ? new Date(session.end).getTime() : Date.now();
-  return Math.max(0, Math.round((end - new Date(session.start).getTime()) / 60000));
+  return duty.netMinutes(session);
 }
 
 router.get(
@@ -40,6 +41,9 @@ router.get(
       onDuty: Boolean(open),
       since: open ? open.start : null,
       liveMin: open ? liveMinutes(open) : 0,
+      onBreak: Boolean(open && duty.openBreak(open)),
+      breakSince: open && duty.openBreak(open) ? duty.openBreak(open).start : null,
+      breakMin: open ? duty.breakMinutes(open) : 0,
       todayMin: sum(todaySessions),
       weekMin: Math.max(0, sum(weekSessions) - weekAdjMin),
       weekPenaltyMin: weekAdjMin,
@@ -61,7 +65,8 @@ router.get(
             }
           : null,
         since: s.start,
-        liveMin: liveMinutes(s)
+        liveMin: liveMinutes(s),
+        onBreak: Boolean(duty.openBreak(s))
       })),
       lockout: {
         enabled: settings.lockoutEnabled,
@@ -81,8 +86,9 @@ router.post(
     const open = await DutySession.findOne({ user: req.user._id, open: true });
 
     if (open) {
+      duty.closeOpenBreak(open, now);
       open.end = now;
-      open.durationMin = liveMinutes(open);
+      open.durationMin = duty.netMinutes(open);
       open.open = false;
       await open.save();
       return res.json({ onDuty: false, message: 'تم تسجيل الخروج', todayMin: 0 });
@@ -96,6 +102,36 @@ router.post(
     req.user.lastSeenAt = now;
     await req.user.save();
     return res.json({ onDuty: true, since: created.start, message: 'تم تسجيل الدخول' });
+  })
+);
+
+router.post(
+  '/break',
+  asyncHandler(async (req, res) => {
+    const open = await DutySession.findOne({ user: req.user._id, open: true });
+    if (!open) throw fail(400, 'يجب تسجيل الدخول أولاً قبل أخذ استراحة', 'NOT_ON_DUTY');
+    const current = duty.openBreak(open);
+    const now = new Date();
+    if (current) {
+      current.end = now;
+      await open.save();
+      return res.json({ onBreak: false, message: 'تمت العودة من الاستراحة' });
+    }
+    open.breaks.push({ start: now, end: null });
+    await open.save();
+    return res.json({ onBreak: true, since: now, message: 'تم بدء الاستراحة، لن تُحتسب ساعاتك حتى تعود' });
+  })
+);
+
+router.get(
+  '/member/:id',
+  requireRank('ops'),
+  asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id);
+    if (!user) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
+    const period = ['week', 'lastweek', 'month', 'all'].includes(req.query.period) ? req.query.period : 'week';
+    const log = await memberCard.attendanceLog(user, period);
+    res.json({ user: { id: String(user._id), name: user.displayName() }, ...log });
   })
 );
 
