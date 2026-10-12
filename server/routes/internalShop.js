@@ -1,10 +1,10 @@
 'use strict';
 
 const router = require('express').Router();
-const { InternalItem, InternalPurchase, User } = require('../models');
-const rolesSvc = require('../services/roles');
+const { InternalItem, Order } = require('../models');
 const bus = require('../services/bus');
-const { logAudit } = require('../services/audit');
+const discordNotify = require('../services/discordNotify');
+const { serialize } = require('../services/orderSerialize');
 const { asyncHandler, fail } = require('../middleware/errors');
 const { requireAuth, requireRank } = require('../middleware/auth');
 const site = require('../../config/site');
@@ -20,96 +20,67 @@ router.get(
         id: String(i._id),
         name: i.name,
         description: i.description,
-        price: i.price,
         stock: i.stock,
         imageUrl: i.imageUrl,
         out: i.stock <= 0
-      })),
-      balance: req.user.balance
+      }))
     });
   })
 );
 
 router.post(
-  '/purchase',
+  '/orders',
   asyncHandler(async (req, res) => {
-    const { itemId, qty } = req.body || {};
-    const quantity = Math.max(1, Math.min(10, parseInt(qty, 10) || 1));
-    if (!itemId) throw fail(400, site.strings.errors.validation, 'VALIDATION');
+    const { items, ingameId, note } = req.body || {};
+    if (!Array.isArray(items) || !items.length || !ingameId) throw fail(400, site.strings.errors.validation, 'VALIDATION');
+    if (String(ingameId).length > 32) throw fail(400, site.strings.errors.validation, 'VALIDATION');
 
-    const item = await InternalItem.findOneAndUpdate(
-      { _id: itemId, active: true, stock: { $gte: quantity } },
-      { $inc: { stock: -quantity } },
-      { new: true }
-    );
-    if (!item) throw fail(409, site.strings.errors.validation, 'OUT_OF_STOCK');
+    const ids = [...new Set(items.map((i) => String(i.itemId)))];
+    const found = await InternalItem.find({ _id: { $in: ids }, active: true });
+    const byId = new Map(found.map((p) => [String(p._id), p]));
 
-    const total = Math.round(item.price * quantity * 100) / 100;
-    const updatedUser = await User.findOneAndUpdate(
-      { _id: req.user._id, balance: { $gte: total } },
-      { $inc: { balance: -total } },
-      { new: true }
-    );
-
-    if (!updatedUser) {
-      await InternalItem.updateOne({ _id: item._id }, { $inc: { stock: quantity } });
-      throw fail(400, site.strings.internalShop.insufficient, 'INSUFFICIENT');
+    const taken = [];
+    const orderItems = [];
+    try {
+      for (const raw of items) {
+        const item = byId.get(String(raw.itemId));
+        const qty = Math.max(1, Math.min(50, parseInt(raw.qty, 10) || 1));
+        if (!item) throw fail(404, site.strings.errors.notFound, 'ITEM');
+        const updated = await InternalItem.findOneAndUpdate({ _id: item._id, stock: { $gte: qty } }, { $inc: { stock: -qty } }, { new: true });
+        if (!updated) throw fail(409, `${item.name}: ${site.strings.shop.outOfStock}`, 'OUT_OF_STOCK');
+        taken.push({ id: item._id, qty });
+        orderItems.push({ internalItem: item._id, name: item.name, price: 0, qty });
+      }
+    } catch (err) {
+      for (const t of taken) await InternalItem.updateOne({ _id: t.id }, { $inc: { stock: t.qty } });
+      throw err;
     }
 
-    const purchase = await InternalPurchase.create({
-      user: updatedUser._id,
-      item: item._id,
-      itemName: item.name,
-      qty: quantity,
-      unitPrice: item.price,
-      total,
-      balanceAfter: updatedUser.balance
+    const order = await Order.create({
+      user: req.user._id,
+      kind: 'internal',
+      items: orderItems,
+      ingameId: String(ingameId).slice(0, 32),
+      note: note ? String(note).slice(0, 500) : '',
+      total: 0,
+      status: 'new',
+      history: [{ status: 'new', at: new Date(), by: req.user._id }]
     });
 
-    await logAudit({
-      actor: req.user,
-      action: 'internal.buy',
-      targetType: 'item',
-      targetId: item._id,
-      before: { balance: updatedUser.balance + total },
-      after: { balance: updatedUser.balance, item: item.name, qty: quantity },
-      ip: req.ip
-    });
-
-    bus.emit('notify', { room: `user:${updatedUser.discordId}`, event: 'user:updated', data: rolesSvc.publicUser(updatedUser) });
-    bus.emit('notify', { room: 'scope:admin', event: 'internal:sold', data: { item: item.name, qty: quantity, total } });
-
-    res.status(201).json({
-      purchase: {
-        id: String(purchase._id),
-        itemName: purchase.itemName,
-        qty: purchase.qty,
-        total: purchase.total,
-        balanceAfter: purchase.balanceAfter,
-        createdAt: purchase.createdAt
-      },
-      balance: updatedUser.balance,
-      message: site.strings.internalShop.purchased
-    });
+    const fresh = await Order.findById(order._id).populate('user', 'globalName username avatar rank');
+    const payload = serialize(fresh);
+    bus.emit('notify', { room: 'scope:shop', event: 'order:new', data: payload });
+    bus.emit('notify', { room: `user:${req.user.discordId}`, event: 'order:new', data: payload });
+    discordNotify.notifyNewOrder(fresh, req.user, { internal: true }).catch(() => {});
+    res.status(201).json({ order: payload, message: site.strings.internalShop.orderSent });
   })
 );
 
 router.get(
-  '/purchases/mine',
+  '/orders/mine',
   asyncHandler(async (req, res) => {
-    const purchases = await InternalPurchase.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(50);
-    res.json({
-      purchases: purchases.map((p) => ({
-        id: String(p._id),
-        itemName: p.itemName,
-        qty: p.qty,
-        unitPrice: p.unitPrice,
-        total: p.total,
-        balanceAfter: p.balanceAfter,
-        createdAt: p.createdAt
-      })),
-      balance: req.user.balance
-    });
+    const orders = await Order.find({ user: req.user._id, kind: 'internal' }).sort({ createdAt: -1 }).limit(50);
+    res.json({ orders: orders.map(serialize) });
   })
 );
 
