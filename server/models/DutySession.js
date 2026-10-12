@@ -2,13 +2,22 @@
 
 const mongoose = require('mongoose');
 
+const breakSchema = new mongoose.Schema(
+  {
+    start: { type: Date, required: true },
+    end: { type: Date, default: null }
+  },
+  { _id: false }
+);
+
 const dutySessionSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     start: { type: Date, required: true, index: true },
     end: { type: Date, default: null },
     durationMin: { type: Number, default: 0 },
-    open: { type: Boolean, default: true, index: true }
+    open: { type: Boolean, default: true, index: true },
+    breaks: { type: [breakSchema], default: [] }
   },
   { timestamps: true }
 );
