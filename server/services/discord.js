@@ -79,9 +79,14 @@ async function fetchAllGuildMembers() {
   return members;
 }
 
+function memberName(member) {
+  if (!member) return '';
+  return member.nick || (member.user && (member.user.global_name || member.user.username)) || '';
+}
+
 async function getMemberRoles(discordId) {
   const member = await fetchBotGuildMember(discordId);
-  if (member) return { roles: member.roles || [], left: false };
+  if (member) return { roles: member.roles || [], left: false, name: memberName(member) };
   if (!env.discord.configured) return null;
   return { roles: [], left: true };
 }
@@ -148,6 +153,7 @@ module.exports = {
   fetchBotGuildMember,
   fetchAllGuildMembers,
   getMemberRoles,
+  memberName,
   fetchGuildRoles,
   cachedRole,
   sendChannelMessage,
