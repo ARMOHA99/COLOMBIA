@@ -1,12 +1,13 @@
 'use strict';
 
 const router = require('express').Router();
-const { User, Operation, DutySession, Discipline, InternalPurchase } = require('../models');
-const { asyncHandler } = require('../middleware/errors');
+const { User, Operation, DutySession, Discipline } = require('../models');
+const { asyncHandler, fail } = require('../middleware/errors');
 const { requireAuth, requireRank } = require('../middleware/auth');
 const site = require('../../config/site');
 const hoursSvc = require('../services/hours');
 const rolesSvc = require('../services/roles');
+const memberCard = require('../services/memberCard');
 
 router.use(requireAuth, requireRank('member'));
 
@@ -28,7 +29,7 @@ router.get(
       ]),
       DutySession.aggregate([{ $group: { _id: '$user', minutes: { $sum: '$durationMin' } } }]),
       User.find({ rank: { $in: ['member', 'ops', 'admin'] }, banned: false })
-        .select('globalName username avatar rank roleLabel discordId balance joinedAt'),
+        .select('globalName username avatar rank roleLabel discordId joinedAt'),
       hoursSvc.adjustmentsByUser()
     ]);
 
@@ -74,48 +75,17 @@ router.get(
 router.get(
   '/card',
   asyncHandler(async (req, res) => {
-    const user = req.user;
-    const since = user.joinedAt || user.createdAt;
-    const [opsCount, wins, losses, missedOps, warnings, dutyAgg, gearAgg] = await Promise.all([
-      Operation.countDocuments({ participants: user._id }),
-      Operation.countDocuments({ participants: user._id, result: 'win' }),
-      Operation.countDocuments({ participants: user._id, result: 'loss' }),
-      Operation.countDocuments({ date: { $gte: since }, participants: { $ne: user._id } }),
-      Discipline.countDocuments({ user: user._id, kind: { $in: ['warning', 'fine'] } }),
-      DutySession.aggregate([
-        { $match: { user: user._id } },
-        { $group: { _id: null, minutes: { $sum: '$durationMin' } } }
-      ]),
-      InternalPurchase.aggregate([
-        { $match: { user: user._id } },
-        { $group: { _id: '$itemName', qty: { $sum: '$qty' } } },
-        { $sort: { qty: -1 } },
-        { $limit: 12 }
-      ])
-    ]);
-    const minutes = Math.max(0, (dutyAgg[0] ? dutyAgg[0].minutes : 0) - (await hoursSvc.totalAdjustmentMin(user._id)));
-    const totalOps = opsCount + missedOps;
-    res.json({
-      card: {
-        id: String(user._id),
-        name: user.displayName(),
-        avatar: user.avatarUrl(256),
-        discordId: user.discordId,
-        rank: user.rank,
-        rankLabel: rolesSvc.rankLabelOf(user),
-        inGameId: user.inGameId || '—',
-        joinedAt: user.joinedAt,
-        balance: user.balance,
-        opsCount,
-        wins,
-        losses,
-        missedOps,
-        warnings,
-        participationRate: totalOps ? Math.round((opsCount / totalOps) * 100) : 0,
-        dutyHours: Math.round((minutes / 60) * 10) / 10,
-        gear: gearAgg.map((g) => ({ name: g._id, qty: g.qty }))
-      }
-    });
+    res.json({ card: await memberCard.buildCard(req.user) });
+  })
+);
+
+router.get(
+  '/card/:id',
+  requireRank('ops'),
+  asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id);
+    if (!user) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
+    res.json({ card: await memberCard.buildCard(user) });
   })
 );
 
