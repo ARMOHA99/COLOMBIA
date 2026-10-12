@@ -108,6 +108,7 @@ async function refreshRoles(user, { reason = 'rest-reconcile', actor = null } = 
 
       user.roles = result.roles || [];
       user.rank = newRank;
+      if (!result.left && result.name) user.globalName = result.name;
       user.roleLabel = result.left ? '' : await labelFor(user.roles);
       user.rolesCheckedAt = new Date();
 
@@ -157,21 +158,23 @@ async function reconcileAll() {
   if (!env.discord.configured) return { checked: 0, changed: 0 };
   const members = await discord.fetchAllGuildMembers();
   if (!members) return { checked: 0, changed: 0 };
-  const byId = new Map(members.map((m) => [m.user.id, (m.roles || []).map(String)]));
+  const byId = new Map(members.map((m) => [m.user.id, { roles: (m.roles || []).map(String), name: discord.memberName(m) }]));
   const users = await User.find({ rank: { $ne: 'guest' } });
   let changed = 0;
   for (const user of users) {
     const remote = byId.get(user.discordId);
     const oldRank = user.rank;
-    const newRoles = remote || [];
+    const newRoles = remote ? remote.roles : [];
+    const newName = remote ? remote.name : '';
     const newRank = remote ? rankOf(newRoles) : 'guest';
     const newLabel = remote ? await labelFor(newRoles) : '';
     const rolesChanged = JSON.stringify([...(user.roles || [])].sort()) !== JSON.stringify([...newRoles].sort());
-    if (!rolesChanged && oldRank === newRank && (user.roleLabel || '') === newLabel && user.rolesCheckedAt && Date.now() - user.rolesCheckedAt.getTime() < env.security.reconcileMs) {
+    if (!rolesChanged && oldRank === newRank && (user.roleLabel || '') === newLabel && (!newName || user.globalName === newName) && user.rolesCheckedAt && Date.now() - user.rolesCheckedAt.getTime() < env.security.reconcileMs) {
       continue;
     }
     user.roles = newRoles;
     user.rank = newRank;
+    if (newName) user.globalName = newName;
     user.roleLabel = newLabel;
     user.rolesCheckedAt = new Date();
     await user.save();
@@ -194,7 +197,8 @@ async function reconcileAll() {
       });
     }
   }
-  for (const [discordId, roles] of byId.entries()) {
+  for (const [discordId, info] of byId.entries()) {
+    const roles = info.roles;
     const rank = rankOf(roles);
     if (rank === 'guest') continue;
     const existing = await User.findOne({ discordId });
@@ -202,6 +206,7 @@ async function reconcileAll() {
     if (existing.rank !== 'guest') continue;
     existing.roles = roles;
     existing.rank = rank;
+    if (info.name) existing.globalName = info.name;
     existing.roleLabel = await labelFor(roles);
     existing.rolesCheckedAt = new Date();
     await existing.save();
@@ -223,7 +228,6 @@ function publicUser(user) {
     rank: user.rank,
     rankLabel: rankLabelOf(user),
     rankOrder: rankValue(user.rank),
-    balance: user.balance,
     inGameId: user.inGameId,
     banned: user.banned,
     roles: user.roles,
