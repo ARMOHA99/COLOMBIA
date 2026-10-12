@@ -5,6 +5,7 @@ const { Discipline, User } = require('../models');
 const rolesSvc = require('../services/roles');
 const bus = require('../services/bus');
 const { logAudit } = require('../services/audit');
+const discordNotify = require('../services/discordNotify');
 const { asyncHandler, fail } = require('../middleware/errors');
 const { requireAuth, requireRank } = require('../middleware/auth');
 const site = require('../../config/site');
@@ -18,8 +19,6 @@ function serialize(d) {
     kindLabel: site.statuses.disciplineKinds[d.kind] || d.kind,
     text: d.text,
     amount: d.amount,
-    balanceBefore: d.balanceBefore,
-    balanceAfter: d.balanceAfter,
     user: d.user
       ? {
           id: String(d.user._id),
@@ -64,19 +63,6 @@ router.post(
       const value = Number(amount);
       if (!Number.isFinite(value) || value <= 0) throw fail(400, site.strings.errors.validation, 'VALIDATION');
       doc.amount = Math.round(value * 100) / 100;
-      doc.balanceBefore = target.balance;
-      target.balance = Math.round((target.balance - doc.amount) * 100) / 100;
-      doc.balanceAfter = target.balance;
-      await target.save();
-      await logAudit({
-        actor: req.user,
-        action: 'discipline.fine',
-        targetType: 'user',
-        targetId: target.discordId,
-        before: { balance: doc.balanceBefore },
-        after: { balance: doc.balanceAfter, amount: doc.amount },
-        ip: req.ip
-      });
     }
 
     const record = await Discipline.create(doc);
@@ -88,6 +74,7 @@ router.post(
 
     bus.emit('notify', { room: `user:${target.discordId}`, event: 'discipline:new', data: serialize(fresh) });
     bus.emit('notify', { room: `user:${target.discordId}`, event: 'user:updated', data: rolesSvc.publicUser(target) });
+    discordNotify.notifyDiscipline(record, target, req.user).catch(() => {});
 
     res.status(201).json({ record: serialize(fresh) });
   })
@@ -100,7 +87,9 @@ router.delete(
     const record = await Discipline.findById(req.params.id);
     if (!record) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
     const snapshot = { kind: record.kind, text: record.text, amount: record.amount };
+    const targetUser = await User.findById(record.user);
     await record.deleteOne();
+    if (targetUser) discordNotify.clearDisciplineRole(targetUser, record.kind).catch(() => {});
     await logAudit({ actor: req.user, action: 'discipline.delete', targetType: 'discipline', targetId: req.params.id, before: snapshot, ip: req.ip });
     res.json({ ok: true });
   })
