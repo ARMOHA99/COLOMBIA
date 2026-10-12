@@ -1,6 +1,7 @@
 import { h, badge, emptyState, skeleton, bindMagnetic } from '../ui.js';
 import { t, duration } from '../state.js';
 import { get } from '../api.js';
+import { openMemberView } from '../member-view.js';
 
 const MEDAL_COLOR = { 1: '#d4af37', 2: '#c0c0c0', 3: '#cd7f32' };
 
@@ -32,6 +33,7 @@ export default {
   minRank: 2,
 
   async render(root, ctx) {
+    const isStaff = ctx.rankOrder(ctx.user.rank) >= 3;
     const strings = ctx.site.strings.leaderboard;
     root.innerHTML = '';
     root.appendChild(h('div', { class: 'card' }, skeleton(8)));
@@ -107,7 +109,7 @@ export default {
         h('td', {}, h('span', { class: r.position <= 3 ? 'gold' : 'muted', text: String(r.position) })),
         h('td', {}, h('div', { class: 'cell-user' },
           h('img', { src: r.avatar, alt: '' }),
-          h('strong', { text: r.name }),
+          h('strong', isStaff ? { class: 'link-name', text: r.name, onClick: () => openMemberView(ctx, r) } : { text: r.name }),
           r.isMe ? badge(strings.you, 'var(--emerald)') : null,
           h('span', { class: 'small muted', text: r.rankLabel })
         )),
