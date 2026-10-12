@@ -1,11 +1,13 @@
 'use strict';
 
 const router = require('express').Router();
+const mongoose = require('mongoose');
 const { Operation, OperationType, User, Item } = require('../models');
 const opItems = require('../services/opItems');
 const targetSvc = require('../services/target');
 const rolesSvc = require('../services/roles');
 const bus = require('../services/bus');
+const discordNotify = require('../services/discordNotify');
 const { logAudit } = require('../services/audit');
 const { asyncHandler, fail } = require('../middleware/errors');
 const { requireAuth, requireRank } = require('../middleware/auth');
@@ -78,6 +80,16 @@ router.get(
   })
 );
 
+router.get(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.id)) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
+    const op = await Operation.findById(req.params.id).populate('participants', 'globalName username avatar rank');
+    if (!op) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
+    res.json({ operation: serialize(op), canEdit: rolesSvc.rankValue(req.user.rank) >= 3 });
+  })
+);
+
 router.post(
   '/',
   requireRank('ops'),
@@ -108,6 +120,7 @@ router.post(
     await logAudit({ actor: req.user, action: 'operation.create', targetType: 'operation', targetId: op._id, after: { title: op.title, result: op.result }, ip: req.ip });
     const populated = await Operation.findById(op._id).populate('participants', 'globalName username avatar rank');
     bus.emit('notify', { room: 'scope:members', event: 'ops:new', data: serialize(populated) });
+    discordNotify.notifyOperation(serialize(populated)).catch(() => {});
     res.status(201).json({ operation: serialize(populated) });
   })
 );
