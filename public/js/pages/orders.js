@@ -87,7 +87,7 @@ export default {
           h('div', { class: 'between' }, h('span', { class: 'small muted', text: t('common.total', 'المجموع') }), h('span', { class: 'gold', text: money(o.total) }))
         );
       }
-      if (o.ingameId) rows.push(h('div', { class: 'small muted', text: `${t('shop.radio', 'رقم الراديو')}: ${o.ingameId}` }));
+      if (o.ingameId && o.kind !== 'internal') rows.push(h('div', { class: 'small muted', text: `${t('shop.radio', 'رقم الراديو')}: ${o.ingameId}` }));
       if (o.note) rows.push(h('p', { class: 'small muted', style: { margin: 0 }, text: o.note }));
 
       const isMine = o.user && o.user.id === ctx.user.id;
