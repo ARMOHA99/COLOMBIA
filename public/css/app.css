@@ -1178,3 +1178,14 @@ body.modal-open {
 /* operation item lines */
 .item-lines { display: flex; flex-direction: column; gap: 8px; }
 .item-line { display: grid; grid-template-columns: minmax(0, 1fr) 90px auto; gap: 8px; align-items: center; }
+
+/* member view + clickable names */
+.link-name { cursor: pointer; font-weight: 700; }
+.link-name:hover { color: var(--gold); text-decoration: underline; }
+.mv-identity { display: flex; gap: 14px; align-items: center; }
+.mv-avatar { width: 84px; height: 84px; border-radius: 50%; border: 2px solid var(--gold); object-fit: cover; }
+.mv-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.mv-stat { padding: 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-soft); text-align: center; }
+.mv-stat-value { font-size: 20px; font-weight: 800; color: var(--gold); }
+.mv-section h4 { margin: 0 0 8px; }
+.mv-row { padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 4px; }
