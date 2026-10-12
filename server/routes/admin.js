@@ -55,7 +55,6 @@ function slimUser(u) {
     avatar: u.avatarUrl(64),
     rank: u.rank,
     rankLabel: rolesSvc.rankLabelOf(u),
-    balance: u.balance,
     banned: u.banned,
     banReason: u.banReason,
     inGameId: u.inGameId,
@@ -191,23 +190,6 @@ router.get(
     }
     const users = await User.find(filter).sort({ rank: -1, createdAt: -1 }).limit(200);
     res.json({ users: users.map(slimUser), total: await User.countDocuments() });
-  })
-);
-
-router.put(
-  '/users/:id/balance',
-  asyncHandler(async (req, res) => {
-    const user = await User.findById(req.params.id);
-    if (!user) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
-    const delta = Number((req.body || {}).delta);
-    const reason = String((req.body || {}).reason || '').slice(0, 300);
-    if (!Number.isFinite(delta) || delta === 0) throw fail(400, site.strings.errors.validation, 'VALIDATION');
-    const before = user.balance;
-    user.balance = Math.round((user.balance + delta) * 100) / 100;
-    await user.save();
-    await logAudit({ actor: req.user, action: 'user.balance', targetType: 'user', targetId: user.discordId, before: { balance: before }, after: { balance: user.balance, reason }, ip: req.ip });
-    bus.emit('notify', { room: `user:${user.discordId}`, event: 'user:updated', data: rolesSvc.publicUser(user) });
-    res.json({ user: slimUser(user) });
   })
 );
 
@@ -508,6 +490,12 @@ router.put(
       'logoUrl',
       'bgLogoUrl',
       'ordersChannelId',
+      'internalOrdersChannelId',
+      'operationsChannelId',
+      'disciplineChannelId',
+      'staffRoleId',
+      'warnRoleId',
+      'fineRoleId',
       'motd',
       'weeklyGoal',
       'lockoutEnabled',
@@ -536,7 +524,9 @@ router.put(
     if (settings.lockoutStart && !/^\d{1,2}:\d{2}$/.test(settings.lockoutStart)) settings.lockoutStart = site.defaults.lockoutStart;
     if (settings.lockoutEnd && !/^\d{1,2}:\d{2}$/.test(settings.lockoutEnd)) settings.lockoutEnd = site.defaults.lockoutEnd;
     if (settings.logoUrl && !/^https:\/\/[^\s"'<>]+$/.test(settings.logoUrl)) settings.logoUrl = '';
-    if (settings.ordersChannelId && !/^\d{15,25}$/.test(settings.ordersChannelId)) settings.ordersChannelId = '';
+    for (const k of ['ordersChannelId', 'internalOrdersChannelId', 'operationsChannelId', 'disciplineChannelId', 'staffRoleId', 'warnRoleId', 'fineRoleId']) {
+      if (settings[k] && !/^\d{15,25}$/.test(settings[k])) settings[k] = '';
+    }
     if (settings.bgLogoUrl && !/^https:\/\/[^\s"'<>]+$/.test(settings.bgLogoUrl)) settings.bgLogoUrl = '';
     await settings.save();
 
