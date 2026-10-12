@@ -47,7 +47,12 @@ export default {
       const rows = [];
 
       rows.push(
-        h('div', { class: 'between' }, h('strong', { text: `#${String(o.id).slice(-6)}` }), badge(statusLabel('order', o.status), color))
+        h(
+          'div',
+          { class: 'between' },
+          h('div', { class: 'row' }, h('strong', { text: `#${String(o.id).slice(-6)}` }), o.kind === 'internal' ? badge('متجر الأعضاء', 'var(--emerald)') : null),
+          badge(statusLabel('order', o.status), color)
+        )
       );
       rows.push(
         h(
@@ -71,16 +76,18 @@ export default {
             'div',
             { class: 'col', style: { gap: '4px' } },
             ...o.items.map((it) =>
-              h('div', { class: 'between small' }, h('span', { text: `${it.name} × ${it.qty}` }), h('span', { class: 'muted', text: money(it.total) }))
+              h('div', { class: 'between small' }, h('span', { text: `${it.name} × ${it.qty}` }), o.kind === 'internal' ? null : h('span', { class: 'muted', text: money(it.total) }))
             )
           )
         );
       }
 
-      rows.push(
-        h('div', { class: 'between' }, h('span', { class: 'small muted', text: t('common.total', 'المجموع') }), h('span', { class: 'gold', text: money(o.total) }))
-      );
-      if (o.ingameId) rows.push(h('div', { class: 'small muted', text: `${t('shop.inGameId', 'الرقم الداخلي')}: ${o.ingameId}` }));
+      if (o.kind !== 'internal') {
+        rows.push(
+          h('div', { class: 'between' }, h('span', { class: 'small muted', text: t('common.total', 'المجموع') }), h('span', { class: 'gold', text: money(o.total) }))
+        );
+      }
+      if (o.ingameId) rows.push(h('div', { class: 'small muted', text: `${t('shop.radio', 'رقم الراديو')}: ${o.ingameId}` }));
       if (o.note) rows.push(h('p', { class: 'small muted', style: { margin: 0 }, text: o.note }));
 
       const isMine = o.user && o.user.id === ctx.user.id;
