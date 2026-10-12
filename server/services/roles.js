@@ -68,11 +68,18 @@ function hasShopDuty(user) {
 async function labelFor(roleIds) {
   const guildRoles = await discord.fetchGuildRoles();
   if (!guildRoles.length) return '';
+  const mine = roleIds || [];
+  const rank = rankOf(mine);
+  const rankRoleId = env.roles[rank];
+  if (rankRoleId && mine.includes(rankRoleId)) {
+    const exact = guildRoles.find((r) => r.id === rankRoleId);
+    if (exact) return exact.name;
+  }
   const mapped = new Set(Object.values(env.roles).filter(Boolean));
-  const mine = guildRoles
-    .filter((r) => (roleIds || []).includes(r.id) && !r.managed && (mapped.has(r.id) || r.hoist))
+  const candidates = guildRoles
+    .filter((r) => mine.includes(r.id) && !r.managed && mapped.has(r.id))
     .sort((a, b) => b.position - a.position);
-  return mine[0] ? mine[0].name : '';
+  return candidates[0] ? candidates[0].name : '';
 }
 
 function rankNameOf(rank) {
