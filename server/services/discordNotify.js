@@ -34,11 +34,9 @@ const safe = (text, max) => String(text || '').slice(0, max);
 
 function orderEmbed(order, user, internal) {
   const lines = (order.items || []).map((i) => (internal ? `• ${i.qty}× ${i.name}` : `• ${i.qty}× ${i.name} — ${money(i.price * i.qty)}`));
-  const fields = [
-    { name: 'العميل', value: safe(`<@${user.discordId}> (${user.displayName()})`, 256), inline: true },
-    { name: 'رقم الراديو', value: safe(order.ingameId || '—', 64), inline: true },
-    { name: 'المنتجات', value: safe(lines.join('\n') || '—', 1000) }
-  ];
+  const fields = [{ name: 'العميل', value: safe(`<@${user.discordId}> (${user.displayName()})`, 256), inline: true }];
+  if (!internal) fields.push({ name: 'رقم الراديو', value: safe(order.ingameId || '—', 64), inline: true });
+  fields.push({ name: 'المنتجات', value: safe(lines.join('\n') || '—', 1000) });
   if (!internal) fields.push({ name: 'الإجمالي', value: money(order.total), inline: true });
   if (order.note) fields.push({ name: 'ملاحظة', value: safe(order.note, 500) });
   return {
