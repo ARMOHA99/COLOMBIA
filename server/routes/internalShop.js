@@ -31,9 +31,8 @@ router.get(
 router.post(
   '/orders',
   asyncHandler(async (req, res) => {
-    const { items, ingameId, note } = req.body || {};
-    if (!Array.isArray(items) || !items.length || !ingameId) throw fail(400, site.strings.errors.validation, 'VALIDATION');
-    if (String(ingameId).length > 32) throw fail(400, site.strings.errors.validation, 'VALIDATION');
+    const { items, note } = req.body || {};
+    if (!Array.isArray(items) || !items.length) throw fail(400, site.strings.errors.validation, 'VALIDATION');
 
     const ids = [...new Set(items.map((i) => String(i.itemId)))];
     const found = await InternalItem.find({ _id: { $in: ids }, active: true });
@@ -60,7 +59,7 @@ router.post(
       user: req.user._id,
       kind: 'internal',
       items: orderItems,
-      ingameId: String(ingameId).slice(0, 32),
+      ingameId: String(req.user.inGameId || '—').slice(0, 32),
       note: note ? String(note).slice(0, 500) : '',
       total: 0,
       status: 'new',
