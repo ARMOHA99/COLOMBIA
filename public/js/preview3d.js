@@ -4,10 +4,12 @@ import { modal, icon } from './ui.js';
 export function openPreview({ imageUrl = '', name = '' } = {}) {
   const holder = document.createElement('div');
   holder.className = 'preview3d';
+  holder.style.cssText = 'position:relative;width:100%;height:min(60vh,460px);border-radius:16px;overflow:hidden;background:radial-gradient(circle at 50% 40%,rgba(212,175,55,0.14),rgba(10,10,10,0.92));';
   holder.innerHTML = '<canvas></canvas>';
 
   const hint = document.createElement('div');
   hint.className = 'preview3d-hint';
+  hint.style.cssText = 'position:absolute;bottom:10px;left:0;right:0;text-align:center;font-size:12px;opacity:0.7;pointer-events:none;';
   hint.textContent = 'اسحب للتدوير • عجلة الفأرة للتقريب';
   holder.appendChild(hint);
 
@@ -19,6 +21,7 @@ export function openPreview({ imageUrl = '', name = '' } = {}) {
   });
 
   const canvas = holder.querySelector('canvas');
+  canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab;';
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
