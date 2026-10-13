@@ -27,14 +27,20 @@ const bus = require('../services/bus');
 const { logAudit } = require('../services/audit');
 const { asyncHandler, fail } = require('../middleware/errors');
 const { requireAuth, requireRank } = require('../middleware/auth');
+const permissionsSvc = require('../services/permissions');
 const { upload, uploadBuffer } = require('../middleware/upload');
 const time = require('../utils/time');
 
-const BUSINESS_ALLOWED = [/^\/products(\/|$)/, /^\/internal-items(\/|$)/, /^\/upload$/];
+const PATH_PERMS = [
+  { re: /^\/products(\/|$)/, perms: ['shop.manage'] },
+  { re: /^\/internal-items(\/|$)/, perms: ['internal.manage'] },
+  { re: /^\/upload$/, perms: ['shop.manage', 'internal.manage'] },
+  { re: /^\/users\/[^/]+\/hours$/, perms: ['hours.deduct'] }
+];
 router.use(requireAuth, (req, res, next) => {
-  const isAdmin = rolesSvc.rankValue(req.user.rank) >= rolesSvc.rankValue('admin');
-  const isBusiness = req.user.rank === 'business' && BUSINESS_ALLOWED.some((re) => re.test(req.path));
-  if (isAdmin || isBusiness) return next();
+  if (req.perms.has('admin.full')) return next();
+  const rule = PATH_PERMS.find((r) => r.re.test(req.path));
+  if (rule && rule.perms.some((p) => req.perms.has(p))) return next();
   return res.status(403).json({ error: site.strings.errors.forbidden, code: 'FORBIDDEN' });
 });
 
@@ -469,6 +475,52 @@ router.get(
       page,
       pages: Math.ceil(total / limit)
     });
+  })
+);
+
+router.get(
+  '/custom-roles',
+  asyncHandler(async (req, res) => {
+    const s = await Settings.getInstance();
+    res.json({
+      roles: (s.customRoles || []).map((r) => ({ id: r.id, kind: r.kind, label: r.label, perms: r.perms })),
+      catalog: permissionsSvc.catalog
+    });
+  })
+);
+
+router.put(
+  '/custom-roles',
+  asyncHandler(async (req, res) => {
+    const raw = Array.isArray((req.body || {}).roles) ? req.body.roles.slice(0, 50) : [];
+    const seen = new Set();
+    const roles = [];
+    for (const r of raw) {
+      const id = String((r && r.id) || '').trim();
+      const kind = r && r.kind === 'user' ? 'user' : 'role';
+      if (!/^\d{15,25}$/.test(id)) throw fail(400, site.strings.errors.validation, 'VALIDATION');
+      const key = `${kind}:${id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const perms = [...new Set((Array.isArray(r.perms) ? r.perms : []).filter((p) => permissionsSvc.VALID.has(p)))];
+      roles.push({ id, kind, label: String(r.label || '').trim().slice(0, 60), perms });
+    }
+    const settings = await Settings.getInstance();
+    const beforeCount = (settings.customRoles || []).length;
+    settings.customRoles = roles;
+    await settings.save();
+    await permissionsSvc.loadCustomRoles();
+    await logAudit({
+      actor: req.user,
+      action: 'settings.customRoles',
+      targetType: 'settings',
+      targetId: 'customRoles',
+      before: { count: beforeCount },
+      after: { count: roles.length, roles },
+      ip: req.ip
+    });
+    rolesSvc.reconcileAll().catch(() => {});
+    res.json({ roles });
   })
 );
 
