@@ -10,10 +10,10 @@ const bus = require('../services/bus');
 const discordNotify = require('../services/discordNotify');
 const { logAudit } = require('../services/audit');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRank } = require('../middleware/auth');
+const { requireAuth, requirePerm } = require('../middleware/auth');
 const site = require('../../config/site');
 
-router.use(requireAuth, requireRank('member'));
+router.use(requireAuth, requirePerm('view.operations', 'ops.record'));
 
 function serialize(op) {
   return {
@@ -66,7 +66,7 @@ router.get(
       types: types.map((t) => ({ key: t.key, label: t.label, color: t.color })),
       target: targetSvc.serialize(target),
       history,
-      canEdit: rolesSvc.rankValue(req.user.rank) >= 3
+      canEdit: req.perms.has('ops.record')
     });
   })
 );
@@ -86,13 +86,13 @@ router.get(
     if (!mongoose.isValidObjectId(req.params.id)) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
     const op = await Operation.findById(req.params.id).populate('participants', 'globalName username avatar rank');
     if (!op) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
-    res.json({ operation: serialize(op), canEdit: rolesSvc.rankValue(req.user.rank) >= 3 });
+    res.json({ operation: serialize(op), canEdit: req.perms.has('ops.record') });
   })
 );
 
 router.post(
   '/',
-  requireRank('ops'),
+  requirePerm('ops.record'),
   asyncHandler(async (req, res) => {
      const { title, typeKey, date, result, participants, notes, winAmount, lossAmount, wonItems, lostItems } = req.body || {};
     if (!title || !typeKey) throw fail(400, site.strings.errors.validation, 'VALIDATION');
@@ -127,7 +127,7 @@ router.post(
 
 router.put(
   '/:id',
-  requireRank('ops'),
+  requirePerm('ops.record'),
   asyncHandler(async (req, res) => {
     const op = await Operation.findById(req.params.id);
     if (!op) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
@@ -163,7 +163,7 @@ router.put(
 
 router.delete(
   '/:id',
-  requireRank('ops'),
+  requirePerm('ops.record'),
   asyncHandler(async (req, res) => {
     const op = await Operation.findById(req.params.id);
     if (!op) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
