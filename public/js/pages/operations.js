@@ -101,7 +101,7 @@ export default {
 
     const site = ctx.site;
     const strings = site.strings.operations;
-    const isStaff = ctx.rankOrder(ctx.user.rank) >= 3;
+    const isStaff = ctx.can('ops.record');
     const unsubs = [];
     let members = null;
     let catalog = null;
