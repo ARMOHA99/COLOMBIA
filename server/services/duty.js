@@ -32,4 +32,12 @@ function closeOpenBreak(session, at = new Date()) {
   return b;
 }
 
-module.exports = { breakMs, netMinutes, breakMinutes, openBreak, closeOpenBreak };
+function closeSession(session, endAt = new Date()) {
+  closeOpenBreak(session, endAt);
+  session.end = endAt;
+  session.durationMin = netMinutes(session);
+  session.open = false;
+  return session;
+}
+
+module.exports = { breakMs, netMinutes, breakMinutes, openBreak, closeOpenBreak, closeSession };
