@@ -25,7 +25,7 @@ export default {
     let onDuty = Boolean(data.onDuty);
     let since = data.since;
     let onBreak = Boolean(data.onBreak);
-    const isStaff = ctx.rankOrder(ctx.user.rank) >= 3;
+    const isStaff = ctx.can('members.view');
 
     const head = h(
       'div',
