@@ -90,7 +90,69 @@ export default {
         h('div', { class: 'stat-sub', text: s.sub })
       )
     );
-    root.appendChild(h('div', { class: 'grid grid-4 mb-2' }, ...statCards));
+    const hasTreasury = ctx.can('view.treasury');
+    const dutyState = { onDuty: Boolean(data.duty.onDuty), onBreak: Boolean(data.duty.onBreak), since: data.duty.since };
+
+    function buildDutyCard() {
+      const att = site.strings.attendance;
+      const statusEl = h('div', { class: 'stat-value', style: { fontSize: '22px' } });
+      const subEl = h('div', { class: 'stat-sub' });
+      const clockBtn = h('button', { class: 'btn btn-sm' });
+      const breakBtn = h('button', { class: 'btn btn-ghost btn-sm' });
+
+      function paint() {
+        statusEl.textContent = dutyState.onDuty ? (dutyState.onBreak ? att.breakBadge : t('dashboard.onDuty', 'على رأس العمل')) : t('dashboard.offDuty', 'خارج الخدمة');
+        statusEl.style.color = dutyState.onDuty ? (dutyState.onBreak ? 'var(--warning)' : 'var(--emerald)') : 'var(--muted)';
+        subEl.textContent = dutyState.onDuty && dutyState.since ? `منذ ${fmtTime(dutyState.since)}` : '—';
+        clockBtn.className = dutyState.onDuty ? 'btn btn-danger btn-sm' : 'btn btn-emerald btn-sm';
+        clockBtn.textContent = dutyState.onDuty ? att.clockOut : att.clockIn;
+        breakBtn.style.display = dutyState.onDuty ? '' : 'none';
+        breakBtn.className = dutyState.onBreak ? 'btn btn-emerald btn-sm' : 'btn btn-ghost btn-sm';
+        breakBtn.textContent = dutyState.onBreak ? att.breakEnd : att.breakStart;
+      }
+
+      clockBtn.addEventListener('click', async () => {
+        clockBtn.disabled = true;
+        try {
+          const res = await post('/attendance/clock');
+          dutyState.onDuty = Boolean(res.onDuty);
+          dutyState.onBreak = false;
+          dutyState.since = res.since || null;
+          toast(res.message || 'تم', 'success');
+          paint();
+        } catch (err) {
+          toast(err.message, 'error');
+        } finally {
+          clockBtn.disabled = false;
+        }
+      });
+      breakBtn.addEventListener('click', async () => {
+        breakBtn.disabled = true;
+        try {
+          const res = await post('/attendance/break');
+          dutyState.onBreak = Boolean(res.onBreak);
+          toast(res.message || 'تم', 'info');
+          paint();
+        } catch (err) {
+          toast(err.message, 'error');
+        } finally {
+          breakBtn.disabled = false;
+        }
+      });
+
+      paint();
+      return h(
+        'div',
+        { class: 'card stat-card' },
+        h('div', { class: 'stat-label' }, h('span', { html: icon('clock', 15) }), h('span', { text: 'الدوام' })),
+        statusEl,
+        subEl,
+        h('div', { class: 'row-wrap mt-1' }, clockBtn, breakBtn)
+      );
+    }
+
+    const dutyCard = !hasTreasury && ctx.can('view.attendance') ? buildDutyCard() : null;
+    root.appendChild(h('div', { class: 'grid grid-4 mb-2' }, ...statCards, ...(dutyCard ? [dutyCard] : [])));
     statCards.forEach((card, i) => {
       const elm = card.querySelector('.stat-value');
       const s = stats[i];
@@ -109,10 +171,12 @@ export default {
       targetBar.querySelector('.progress-fill').style.width = `${target.percent}%`;
       targetMeta.innerHTML = '';
       targetMeta.append(
-        h('span', { class: 'pill', text: `${t('target.goal', 'الهدف')}: ${money(target.goal)}` }),
-        h('span', { class: 'pill', text: `${t('target.remaining', 'المتبقي')}: ${money(target.remaining)}` }),
-        h('span', { class: 'pill', text: `${site.locale.timezone}` }),
-        target.completed ? badge(t('target.completed', 'اكتمل الهدف الأسبوعي! 🎉'), 'var(--emerald)') : null
+        ...[
+          h('span', { class: 'pill', text: `${t('target.goal', 'الهدف')}: ${money(target.goal)}` }),
+          h('span', { class: 'pill', text: `${t('target.remaining', 'المتبقي')}: ${money(target.remaining)}` }),
+          h('span', { class: 'pill', text: `${site.locale.timezone}` }),
+          target.completed ? badge(t('target.completed', 'اكتمل الهدف الأسبوعي! 🎉'), 'var(--emerald)') : null
+        ].filter(Boolean)
       );
     }
 
@@ -146,11 +210,11 @@ export default {
     const targetCard = h(
       'div',
       { class: 'card' },
-      h('div', { class: 'card-title' }, h('span', { text: strings.targetRing }), dutyBtn),
+      h('div', { class: 'card-title' }, h('span', { text: strings.targetRing }), hasTreasury ? dutyBtn : null),
       ringHolder,
       targetBar,
       targetMeta,
-      h('div', { class: 'between mt-1' }, h('span', { class: 'small muted', text: t('target.resetInfo', 'يُعاد الضبط تلقائياً كل يوم اثنين') }), dutyTime)
+      h('div', { class: 'between mt-1' }, h('span', { class: 'small muted', text: t('target.resetInfo', 'يُعاد الضبط تلقائياً كل يوم اثنين') }), hasTreasury ? dutyTime : null)
     );
 
     const annList = h('div', { class: 'col' });
