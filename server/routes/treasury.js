@@ -5,10 +5,10 @@ const { TreasuryEntry, Settings } = require('../models');
 const bus = require('../services/bus');
 const { logAudit } = require('../services/audit');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRankOr } = require('../middleware/auth');
+const { requireAuth, requirePerm } = require('../middleware/auth');
 const site = require('../../config/site');
 
-router.use(requireAuth, requireRankOr('ops', 'business'));
+router.use(requireAuth, requirePerm('view.treasury', 'treasury.write'));
 
 function serialize(e) {
   return {
@@ -38,14 +38,14 @@ router.get(
       balance: Math.round((income - expense) * 100) / 100,
       summary: { income, expense, count: entries.length },
       categories: settings.treasuryCategories || [],
-      canWrite: req.userRankValue >= 3 || req.user.rank === 'business'
+      canWrite: req.perms.has('treasury.write')
     });
   })
 );
 
 router.post(
   '/',
-  requireRankOr('ops', 'business'),
+  requirePerm('treasury.write'),
   asyncHandler(async (req, res) => {
     const { type, category, amount, note } = req.body || {};
     if (!['income', 'expense'].includes(type)) throw fail(400, site.strings.errors.validation, 'VALIDATION');
@@ -62,14 +62,14 @@ router.post(
     await logAudit({ actor: req.user, action: 'treasury.create', targetType: 'entry', targetId: entry._id, after: { type, amount: entry.amount, category: entry.category }, ip: req.ip });
 
     const fresh = await TreasuryEntry.findById(entry._id).populate('by', 'globalName username');
-    bus.emit('notify', { room: 'scope:members', event: 'treasury:updated', data: serialize(fresh) });
+    bus.emit('notify', { room: 'scope:treasury', event: 'treasury:updated', data: serialize(fresh) });
     res.status(201).json({ entry: serialize(fresh) });
   })
 );
 
 router.put(
   '/:id',
-  requireRankOr('ops', 'business'),
+  requirePerm('treasury.write'),
   asyncHandler(async (req, res) => {
     const entry = await TreasuryEntry.findById(req.params.id);
     if (!entry) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
@@ -86,21 +86,21 @@ router.put(
     await entry.save();
     await logAudit({ actor: req.user, action: 'treasury.update', targetType: 'entry', targetId: entry._id, before, after: { type: entry.type, amount: entry.amount }, ip: req.ip });
     const fresh = await TreasuryEntry.findById(entry._id).populate('by', 'globalName username');
-    bus.emit('notify', { room: 'scope:members', event: 'treasury:updated', data: serialize(fresh) });
+    bus.emit('notify', { room: 'scope:treasury', event: 'treasury:updated', data: serialize(fresh) });
     res.json({ entry: serialize(fresh) });
   })
 );
 
 router.delete(
   '/:id',
-  requireRankOr('ops', 'business'),
+  requirePerm('treasury.write'),
   asyncHandler(async (req, res) => {
     const entry = await TreasuryEntry.findById(req.params.id);
     if (!entry) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
     const snapshot = { type: entry.type, amount: entry.amount, category: entry.category };
     await entry.deleteOne();
     await logAudit({ actor: req.user, action: 'treasury.delete', targetType: 'entry', targetId: req.params.id, before: snapshot, ip: req.ip });
-    bus.emit('notify', { room: 'scope:members', event: 'treasury:updated', data: { id: req.params.id, deleted: true } });
+    bus.emit('notify', { room: 'scope:treasury', event: 'treasury:updated', data: { id: req.params.id, deleted: true } });
     res.json({ ok: true });
   })
 );
