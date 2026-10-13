@@ -277,6 +277,7 @@ export default {
           h('td', {}, badge(u.banned ? S.ban : S.active, u.banned ? 'var(--danger)' : 'var(--emerald)')),
           h('td', {}, h('div', { class: 'row' },
             h('button', { class: 'btn btn-ghost btn-sm', html: `${icon('clock', 14)}<span>خصم ساعات</span>`, title: 'خصم ساعات كعقوبة', onClick: () => hoursForm(u) }),
+            h('button', { class: 'btn btn-ghost btn-sm', html: `${icon('logout', 14)}<span>إنهاء الدوام</span>`, title: 'تسجيل خروج هذا العضو الآن', onClick: () => forceClockOut(u) }),
             h('button', {
               class: u.banned ? 'btn btn-emerald btn-sm' : 'btn btn-danger btn-sm',
               text: u.banned ? S.unban : S.ban,
@@ -296,6 +297,26 @@ export default {
         ctx.toast(err.message, 'error');
       }
       tabUsers();
+    }
+
+    async function forceClockOut(u) {
+      if (!(await confirm(`إنهاء دوام ${u.name} الآن؟`, { danger: true, okText: 'إنهاء الدوام' }))) return;
+      try {
+        const res = await post(`/admin/users/${u.id}/clock-out`);
+        ctx.toast(res.message, res.closed ? 'success' : 'info');
+      } catch (err) {
+        ctx.toast(err.message, 'error');
+      }
+    }
+
+    async function closeAllDuty() {
+      if (!(await confirm('إنهاء دوام جميع المسجّلين دخولاً الآن؟', { danger: true, okText: 'إنهاء الكل' }))) return;
+      try {
+        const res = await post('/admin/attendance/close-all');
+        ctx.toast(res.message, res.closed ? 'success' : 'info');
+      } catch (err) {
+        ctx.toast(err.message, 'error');
+      }
     }
 
     function hoursForm(u) {
@@ -366,7 +387,7 @@ export default {
       const card = h('div', { class: 'card' },
         h('div', { class: 'card-title' },
           h('span', { text: `${S.tabUsers} (${data.total || users.length})` }),
-          h('div', { class: 'row' }, searchI, h('button', { class: 'btn btn-ghost btn-sm', html: icon('search', 15), onClick: () => { userQuery = searchI.value.trim(); tabUsers(); } }))
+          h('div', { class: 'row' }, searchI, h('button', { class: 'btn btn-ghost btn-sm', html: icon('search', 15), onClick: () => { userQuery = searchI.value.trim(); tabUsers(); } }), h('button', { class: 'btn btn-danger btn-sm', html: `${icon('logout', 14)}<span>إنهاء دوام الجميع</span>`, onClick: closeAllDuty }))
         ),
         usersTable(users)
       );
