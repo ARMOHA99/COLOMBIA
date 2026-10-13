@@ -3,6 +3,7 @@
 const router = require('express').Router();
 const { User, Operation, Announcement, TreasuryEntry, DutySession, Ticket, Order, FarmPlot } = require('../models');
 const targetSvc = require('../services/target');
+const dutySvc = require('../services/duty');
 const time = require('../utils/time');
 const { asyncHandler } = require('../middleware/errors');
 const { requireAuth, requirePerm } = require('../middleware/auth');
@@ -56,7 +57,7 @@ router.get(
       announcements,
       target: targetSvc.serialize(target),
       latestOps,
-      duty: { onDuty: Boolean(duty), since: duty ? duty.start : null },
+      duty: { onDuty: Boolean(duty), since: duty ? duty.start : null, onBreak: duty ? Boolean(dutySvc.openBreak(duty)) : false },
       me: {
         todayStart
       }
