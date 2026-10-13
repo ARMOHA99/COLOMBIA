@@ -6,10 +6,10 @@ const bus = require('../services/bus');
 const discordNotify = require('../services/discordNotify');
 const { serialize } = require('../services/orderSerialize');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRank } = require('../middleware/auth');
+const { requireAuth, requirePerm } = require('../middleware/auth');
 const site = require('../../config/site');
 
-router.use(requireAuth, requireRank('member'));
+router.use(requireAuth, requirePerm('view.internal'));
 
 router.get(
   '/items',
