@@ -5,10 +5,10 @@ const { FarmPlot, HarvestLog, Settings } = require('../models');
 const farmSvc = require('../services/farm');
 const rolesSvc = require('../services/roles');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRank } = require('../middleware/auth');
+const { requireAuth, requirePerm } = require('../middleware/auth');
 const site = require('../../config/site');
 
-router.use(requireAuth, requireRank('member'));
+router.use(requireAuth, requirePerm('view.farm', 'farm.manage'));
 
 function serializePlot(plot) {
   return {
@@ -44,7 +44,7 @@ router.get(
         user: l.user ? { id: String(l.user._id), name: l.user.displayName(), avatar: l.user.avatarUrl(64) } : null,
         at: l.at
       })),
-      canManage: rolesSvc.rankValue(req.user.rank) >= 3
+      canManage: req.perms.has('farm.manage')
     });
   })
 );
@@ -86,7 +86,7 @@ router.post(
 
 router.post(
   '/:id/clear',
-  requireRank('ops'),
+  requirePerm('farm.manage'),
   asyncHandler(async (req, res) => {
     const plot = await FarmPlot.findById(req.params.id);
     if (!plot) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
