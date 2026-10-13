@@ -79,7 +79,7 @@ export default {
       { label: strings.statsOpsWeek, value: data.stats.opsWeek, icon: 'target', sub: 'هذا الأسبوع' },
       { label: strings.statsTarget, value: data.target ? data.target.percent : 0, icon: 'chart', suffix: '%', sub: data.target ? `${money(data.target.score)} / ${money(data.target.goal)}` : '', tone: 'emerald-tone' },
       { label: strings.statsBalance, value: data.stats.balance, icon: 'coins', money: true, sub: `📦 ${data.stats.pendingOrders} • 🎫 ${data.stats.openTickets}` }
-      ].filter((s) => !(s.money && ctx.user.rank === 'member'));
+      ].filter((s) => !s.money || ctx.can('view.treasury'));
 
     const statCards = stats.map((s) =>
       h(
@@ -242,9 +242,9 @@ export default {
       const ready = data.stats.readyPlots || 0;
       const items = [
         { icon: 'leaf', label: t('farm.title', 'المزرعة'), value: `${ready} ${ready === 1 ? 'جاهزة' : 'جاهزة'}`, route: '#/farm', tone: ready > 0 ? 'emerald' : '' },
-                ...(ctx.user.rank === 'member' ? [] : [{ icon: 'receipt', label: t('orders.title', 'الطلبات'), value: `${data.stats.pendingOrders} معلّق`, route: '#/orders' }]),
+                ...(!ctx.can('view.orders') ? [] : [{ icon: 'receipt', label: t('orders.title', 'الطلبات'), value: `${data.stats.pendingOrders} معلّق`, route: '#/orders' }]),
         { icon: 'mail', label: t('tickets.title', 'التذاكر'), value: `${data.stats.openTickets} مفتوحة`, route: '#/tickets' },
-               ...(ctx.user.rank === 'member' ? [] : [{ icon: 'coins', label: t('treasury.title', 'الخزينة'), value: money(data.stats.balance), route: '#/treasury' }])
+               ...(!ctx.can('view.treasury') ? [] : [{ icon: 'coins', label: t('treasury.title', 'الخزينة'), value: money(data.stats.balance), route: '#/treasury' }])
       ];
       return h(
         'div',
