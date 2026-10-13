@@ -20,6 +20,8 @@ const env = require('../../config/env');
 const site = require('../../config/site');
 const rolesSvc = require('../services/roles');
 const hoursSvc = require('../services/hours');
+const scheduler = require('../services/scheduler');
+const duty = require('../services/duty');
 const targetSvc = require('../services/target');
 const farmSvc = require('../services/farm');
 const discord = require('../services/discord');
@@ -196,6 +198,48 @@ router.get(
     }
     const users = await User.find(filter).sort({ rank: -1, createdAt: -1 }).limit(200);
     res.json({ users: users.map(slimUser), total: await User.countDocuments() });
+  })
+);
+
+router.post(
+  '/users/:id/clock-out',
+  asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.id);
+    if (!user) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
+    const open = await DutySession.findOne({ user: user._id, open: true });
+    if (!open) return res.json({ closed: false, message: 'هذا العضو ليس مسجّل دخول حالياً' });
+    duty.closeSession(open, new Date());
+    await open.save();
+    await logAudit({
+      actor: req.user,
+      action: 'attendance.forceClockOut',
+      targetType: 'user',
+      targetId: user.discordId,
+      after: { durationMin: open.durationMin },
+      ip: req.ip
+    });
+    res.json({ closed: true, durationMin: open.durationMin, message: `تم إنهاء دوام ${user.displayName()}` });
+  })
+);
+
+router.post(
+  '/attendance/close-all',
+  asyncHandler(async (req, res) => {
+    const open = await DutySession.find({ open: true });
+    const now = new Date();
+    for (const s of open) {
+      duty.closeSession(s, now);
+      await s.save();
+    }
+    await logAudit({
+      actor: req.user,
+      action: 'attendance.closeAll',
+      targetType: 'settings',
+      targetId: 'attendance',
+      after: { count: open.length },
+      ip: req.ip
+    });
+    res.json({ closed: open.length, message: open.length ? `تم إنهاء دوام ${open.length} عضو` : 'لا أحد مسجّل دخول الآن' });
   })
 );
 
@@ -581,6 +625,7 @@ router.put(
     }
     if (settings.bgLogoUrl && !/^https:\/\/[^\s"'<>]+$/.test(settings.bgLogoUrl)) settings.bgLogoUrl = '';
     await settings.save();
+    scheduler.closeLockedSessions().catch(() => {});
 
     if (before.weeklyGoal !== undefined && before.weeklyGoal !== settings.weeklyGoal) await targetSvc.setWeeklyGoal(settings.weeklyGoal);
     if (before.plotsCount !== undefined && before.plotsCount !== settings.plotsCount) await farmSvc.ensurePlots();
