@@ -7,10 +7,10 @@ const bus = require('../services/bus');
 const { logAudit } = require('../services/audit');
 const discordNotify = require('../services/discordNotify');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRank } = require('../middleware/auth');
+const { requireAuth, requirePerm } = require('../middleware/auth');
 const site = require('../../config/site');
 
-router.use(requireAuth, requireRank('member'));
+router.use(requireAuth, requirePerm('view.discipline', 'discipline.write'));
 
 function serialize(d) {
   return {
@@ -35,7 +35,7 @@ function serialize(d) {
 router.get(
   '/',
   asyncHandler(async (req, res) => {
-    const isStaff = rolesSvc.rankValue(req.user.rank) >= 3;
+    const isStaff = req.perms.has('discipline.write');
     const filter = isStaff ? {} : { user: req.user._id };
     if (isStaff && req.query.userId) filter.user = req.query.userId;
     const docs = await Discipline.find(filter)
@@ -49,7 +49,7 @@ router.get(
 
 router.post(
   '/',
-  requireRank('ops'),
+  requirePerm('discipline.write'),
   asyncHandler(async (req, res) => {
     const { userId, kind, text, amount } = req.body || {};
     if (!userId || !['note', 'warning', 'fine'].includes(kind) || !text) {
@@ -82,7 +82,7 @@ router.post(
 
 router.delete(
   '/:id',
-  requireRank('ops'),
+  requirePerm('discipline.write'),
   asyncHandler(async (req, res) => {
     const record = await Discipline.findById(req.params.id);
     if (!record) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
