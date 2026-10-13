@@ -12,7 +12,7 @@ export default {
     const site = ctx.site;
     const strings = site.strings.tickets;
     const user = ctx.user;
-    const isStaff = ctx.rankOrder(user.rank) >= 3;
+    const isStaff = ctx.can('tickets.handle');
     const unsubs = [];
     let scope = isStaff ? 'all' : 'mine';
     let tickets = [];
