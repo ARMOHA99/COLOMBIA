@@ -12,7 +12,7 @@ export default {
     const site = ctx.site;
     const strings = site.strings.discipline;
     const user = ctx.user;
-    const isStaff = ctx.rankOrder(user.rank) >= 3;
+    const isStaff = ctx.can('discipline.write');
     const unsubs = [];
     let scope = 'mine';
     let records = [];
@@ -44,7 +44,7 @@ export default {
     }
 
     async function loadMembers() {
-      if (ctx.rankOrder(user.rank) >= 4) {
+      if (ctx.can('admin.full')) {
         const data = await get('/admin/users');
         return (data.users || []).map((u) => ({ value: u.id, label: u.name + (u.inGameId ? ' • ' + u.inGameId : '') }));
       }
