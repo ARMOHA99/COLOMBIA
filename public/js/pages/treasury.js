@@ -41,7 +41,7 @@ export default {
     const site = ctx.site;
     const strings = site.strings.treasury;
     const currency = (site.locale && site.locale.currency) || '$';
-    const isStaff = ctx.rankOrder(ctx.user.rank) >= 3 || Boolean(data.canWrite);
+    const isStaff = Boolean(data.canWrite);
     const categories = data.categories && data.categories.length ? data.categories : site.defaults.treasuryCategories || [];
     const unsubs = [];
     let entries = data.entries.slice();
