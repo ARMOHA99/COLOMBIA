@@ -4,11 +4,12 @@ const env = require('../../config/env');
 const site = require('../../config/site');
 const { User } = require('../models');
 const discord = require('./discord');
+const permissionsSvc = require('./permissions');
 const bus = require('./bus');
 const logger = require('./logger');
 const { logAudit } = require('./audit');
 
-const RANK_ORDER = { guest: 0, shop: 1, business: 1.5, member: 2, ops: 3, admin: 4 };
+const RANK_ORDER = { guest: 0, shop: 1, custom: 1, business: 1.5, member: 2, ops: 3, admin: 4 };
 
 const registry = {
   map: new Map(),
@@ -44,13 +45,14 @@ const registry = {
   }
 };
 
-function rankOf(roleIds) {
+function rankOf(roleIds, discordId) {
   const set = new Set(Array.isArray(roleIds) ? roleIds : []);
   if (env.roles.admin && set.has(env.roles.admin)) return 'admin';
   if (env.roles.ops && set.has(env.roles.ops)) return 'ops';
   if (env.roles.business && set.has(env.roles.business)) return 'business';
   if (env.roles.member && set.has(env.roles.member)) return 'member';
   if (env.roles.shop && set.has(env.roles.shop)) return 'shop';
+  if (permissionsSvc.customMatches(roleIds, discordId).length) return 'custom';
   return 'guest';
 }
 
@@ -59,17 +61,21 @@ function rankValue(rank) {
 }
 
 function hasShopDuty(user) {
-  if (!user) return false;
-  if (rankValue(user.rank) >= 3) return true;
-  if (user.rank === 'business') return true;
-  return env.roles.shop ? (user.roles || []).includes(env.roles.shop) : user.rank === 'shop';
+  return permissionsSvc.hasPerm(user, 'orders.handle');
 }
 
-async function labelFor(roleIds) {
+async function labelFor(roleIds, discordId) {
   const guildRoles = await discord.fetchGuildRoles();
-  if (!guildRoles.length) return '';
   const mine = roleIds || [];
-  const rank = rankOf(mine);
+  const rank = rankOf(mine, discordId);
+  if (rank === 'custom') {
+    const entry = permissionsSvc.customMatches(mine, discordId)[0];
+    if (!entry) return '';
+    if (entry.label) return entry.label;
+    const found = guildRoles.find((r) => r.id === entry.id);
+    return found ? found.name : '';
+  }
+  if (!guildRoles.length) return '';
   const rankRoleId = env.roles[rank];
   if (rankRoleId && mine.includes(rankRoleId)) {
     const exact = guildRoles.find((r) => r.id === rankRoleId);
@@ -110,13 +116,13 @@ async function refreshRoles(user, { reason = 'rest-reconcile', actor = null } = 
       if (!result) return user;
       const oldRoles = user.roles || [];
       const oldRank = user.rank;
-      const newRank = result.left ? 'guest' : rankOf(result.roles);
+      const newRank = result.left ? 'guest' : rankOf(result.roles, user.discordId);
       const rolesChanged = JSON.stringify([...oldRoles].sort()) !== JSON.stringify([...(result.roles || [])].sort());
 
       user.roles = result.roles || [];
       user.rank = newRank;
       if (!result.left && result.name) user.globalName = result.name;
-      user.roleLabel = result.left ? '' : await labelFor(user.roles);
+      user.roleLabel = result.left ? '' : await labelFor(user.roles, user.discordId);
       user.rolesCheckedAt = new Date();
 
       if (rolesChanged || oldRank !== newRank) {
@@ -162,6 +168,7 @@ async function ensureFreshRoles(user) {
 }
 
 async function reconcileAll() {
+  await permissionsSvc.ensureCustomRoles();
   if (!env.discord.configured) return { checked: 0, changed: 0 };
   const members = await discord.fetchAllGuildMembers();
   if (!members) return { checked: 0, changed: 0 };
@@ -173,8 +180,8 @@ async function reconcileAll() {
     const oldRank = user.rank;
     const newRoles = remote ? remote.roles : [];
     const newName = remote ? remote.name : '';
-    const newRank = remote ? rankOf(newRoles) : 'guest';
-    const newLabel = remote ? await labelFor(newRoles) : '';
+    const newRank = remote ? rankOf(newRoles, user.discordId) : 'guest';
+    const newLabel = remote ? await labelFor(newRoles, user.discordId) : '';
     const rolesChanged = JSON.stringify([...(user.roles || [])].sort()) !== JSON.stringify([...newRoles].sort());
     if (!rolesChanged && oldRank === newRank && (user.roleLabel || '') === newLabel && (!newName || user.globalName === newName) && user.rolesCheckedAt && Date.now() - user.rolesCheckedAt.getTime() < env.security.reconcileMs) {
       continue;
@@ -206,7 +213,7 @@ async function reconcileAll() {
   }
   for (const [discordId, info] of byId.entries()) {
     const roles = info.roles;
-    const rank = rankOf(roles);
+    const rank = rankOf(roles, discordId);
     if (rank === 'guest') continue;
     const existing = await User.findOne({ discordId });
     if (!existing) continue;
@@ -214,7 +221,7 @@ async function reconcileAll() {
     existing.roles = roles;
     existing.rank = rank;
     if (info.name) existing.globalName = info.name;
-    existing.roleLabel = await labelFor(roles);
+    existing.roleLabel = await labelFor(roles, discordId);
     existing.rolesCheckedAt = new Date();
     await existing.save();
     changed += 1;
@@ -235,6 +242,7 @@ function publicUser(user) {
     rank: user.rank,
     rankLabel: rankLabelOf(user),
     rankOrder: rankValue(user.rank),
+    perms: Array.from(permissionsSvc.permsOf(user)),
     inGameId: user.inGameId,
     banned: user.banned,
     roles: user.roles,
