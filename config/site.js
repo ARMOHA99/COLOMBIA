@@ -49,25 +49,26 @@ module.exports = {
     business: { key: 'business', label: 'بزنس مانجر', order: 1.5, color: '#a855f7', perm: 'الأصناف والأسعار والخزينة والمتاجر' },
     member: { key: 'member', label: 'عضو', order: 2, color: '#38bdf8', perm: 'المنطقة الخاصة بالأعضاء' },
     shop: { key: 'shop', label: 'متجر', order: 1, color: '#f59e0b', perm: 'المتجر وإدارة الطلبات' },
+    custom: { key: 'custom', label: 'دور مخصص', order: 1, color: '#94a3b8', perm: 'صلاحيات مخصصة' },
     guest: { key: 'guest', label: 'زائر', order: 0, color: '#9a978f', perm: 'بدون صلاحيات' }
   },
 
   nav: [
-    { id: 'dashboard', hash: '#/dashboard', label: 'الداشبورد', icon: 'grid', minRank: 2 },
-    { id: 'card', hash: '#/card', label: 'بطاقتي', icon: 'user', minRank: 2 },
-    { id: 'shop', hash: '#/shop', label: 'المتجر', icon: 'bag', minRank: 1, hideFor: ['member'] },
-    { id: 'orders', hash: '#/orders', label: 'الطلبات', icon: 'receipt', minRank: 1, hideFor: ['member'] },
-    { id: 'attendance', hash: '#/attendance', label: 'الدوام', icon: 'clock', minRank: 2 },
-    { id: 'operations', hash: '#/operations', label: 'العمليات', icon: 'target', minRank: 2 },
-    { id: 'farm', hash: '#/farm', label: 'المزرعة', icon: 'leaf', minRank: 2 },
-    { id: 'treasury', hash: '#/treasury', label: 'الخزينة', icon: 'coins', minRank: 2, hideFor: ['member'], allow: ['business'] },
-    { id: 'items', hash: '#/items', label: 'الأصناف والأسعار', icon: 'box', minRank: 4, allow: ['business'] },
-    { id: 'shops', hash: '#/shops', label: 'إدارة المتاجر', icon: 'cart', minRank: 99, allow: ['business'] },
-    { id: 'internal', hash: '#/internal', label: 'المتجر الداخلي', icon: 'cart', minRank: 2 },
-    { id: 'discipline', hash: '#/discipline', label: 'سجل الانضباط', icon: 'shield', minRank: 2 },
-    { id: 'tickets', hash: '#/tickets', label: 'التذاكر', icon: 'mail', minRank: 2 },
-    { id: 'leaderboard', hash: '#/leaderboard', label: 'لوحة الشرف', icon: 'medal', minRank: 2 },
-    { id: 'admin', hash: '#/admin', label: 'لوحة الإدارة', icon: 'settings', minRank: 4 }
+    { id: 'dashboard', hash: '#/dashboard', label: 'الداشبورد', icon: 'grid', perms: ['view.dashboard'] },
+    { id: 'card', hash: '#/card', label: 'بطاقتي', icon: 'user', perms: ['view.card'] },
+    { id: 'shop', hash: '#/shop', label: 'المتجر', icon: 'bag', perms: ['view.shop'] },
+    { id: 'orders', hash: '#/orders', label: 'الطلبات', icon: 'receipt', perms: ['view.orders'] },
+    { id: 'attendance', hash: '#/attendance', label: 'الدوام', icon: 'clock', perms: ['view.attendance'] },
+    { id: 'operations', hash: '#/operations', label: 'العمليات', icon: 'target', perms: ['view.operations'] },
+    { id: 'farm', hash: '#/farm', label: 'المزرعة', icon: 'leaf', perms: ['view.farm'] },
+    { id: 'treasury', hash: '#/treasury', label: 'الخزينة', icon: 'coins', perms: ['view.treasury'] },
+    { id: 'items', hash: '#/items', label: 'الأصناف والأسعار', icon: 'box', perms: ['view.items'] },
+    { id: 'shops', hash: '#/shops', label: 'إدارة المتاجر', icon: 'cart', perms: ['shop.manage', 'internal.manage'], hideWhen: ['admin.full'] },
+    { id: 'internal', hash: '#/internal', label: 'المتجر الداخلي', icon: 'cart', perms: ['view.internal'] },
+    { id: 'discipline', hash: '#/discipline', label: 'سجل الانضباط', icon: 'shield', perms: ['view.discipline'] },
+    { id: 'tickets', hash: '#/tickets', label: 'التذاكر', icon: 'mail', perms: ['view.tickets'] },
+    { id: 'leaderboard', hash: '#/leaderboard', label: 'لوحة الشرف', icon: 'medal', perms: ['view.leaderboard'] },
+    { id: 'admin', hash: '#/admin', label: 'لوحة الإدارة', icon: 'settings', perms: ['admin.full'] }
   ],
 
   routesByRank: {
