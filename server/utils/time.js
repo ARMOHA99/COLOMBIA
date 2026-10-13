@@ -73,6 +73,14 @@ function isLockoutActive(now = new Date(), startStr = '22:00', endStr = '04:00')
   return cur >= s || cur < e;
 }
 
+function lastOccurrence(now = new Date(), hhmmStr = '00:00') {
+  const z = toZoned(now);
+  const mins = toMinutes(hhmmStr);
+  let target = Date.UTC(z.getUTCFullYear(), z.getUTCMonth(), z.getUTCDate(), Math.floor(mins / 60), mins % 60);
+  if (target > z.getTime()) target -= 24 * 60 * 60 * 1000;
+  return fromZoned(new Date(target));
+}
+
 function formatDateTime(date = new Date()) {
   try {
     return new Intl.DateTimeFormat('ar-DZ', {
@@ -121,6 +129,7 @@ module.exports = {
   minutesOfDay,
   toMinutes,
   isLockoutActive,
+  lastOccurrence,
   formatDateTime,
   formatDate,
   relativeTime
