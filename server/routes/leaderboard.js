@@ -3,16 +3,17 @@
 const router = require('express').Router();
 const { User, Operation, DutySession, Discipline } = require('../models');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRank } = require('../middleware/auth');
+const { requireAuth, requirePerm } = require('../middleware/auth');
 const site = require('../../config/site');
 const hoursSvc = require('../services/hours');
 const rolesSvc = require('../services/roles');
 const memberCard = require('../services/memberCard');
 
-router.use(requireAuth, requireRank('member'));
+router.use(requireAuth);
 
 router.get(
   '/',
+  requirePerm('view.leaderboard'),
   asyncHandler(async (req, res) => {
     const [opsPts, dutyPts, users, adjMap] = await Promise.all([
       Operation.aggregate([
@@ -74,6 +75,7 @@ router.get(
 
 router.get(
   '/card',
+  requirePerm('view.card', 'members.view'),
   asyncHandler(async (req, res) => {
     res.json({ card: await memberCard.buildCard(req.user) });
   })
@@ -81,7 +83,7 @@ router.get(
 
 router.get(
   '/card/:id',
-  requireRank('ops'),
+  requirePerm('members.view'),
   asyncHandler(async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
