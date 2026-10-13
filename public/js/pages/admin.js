@@ -14,7 +14,7 @@ export default {
     const errors = site.strings.errors;
     const user = ctx.user;
     const unsubs = [];
-    const businessOnly = user.rank === 'business';
+    const businessOnly = !ctx.can('admin.full');
     let tab = 'products';
     let userQuery = '';
     let auditPage = 1;
@@ -45,9 +45,13 @@ export default {
       { id: 'announcements', label: S.tabAnnouncements },
       { id: 'target', label: S.tabTarget },
       { id: 'audit', label: S.tabAudit },
-      { id: 'settings', label: S.tabSettings }
+      { id: 'settings', label: S.tabSettings },
+      { id: 'roles', label: 'الصلاحيات' }
     ];
-    const TAB_DEFS = businessOnly ? ALL_TAB_DEFS.filter((d) => d.id === 'products' || d.id === 'internal') : ALL_TAB_DEFS;
+    const TAB_DEFS = ALL_TAB_DEFS.filter(
+      (d) => !businessOnly || (d.id === 'products' && ctx.can('shop.manage')) || (d.id === 'internal' && ctx.can('internal.manage'))
+    );
+    if (!TAB_DEFS.some((d) => d.id === tab) && TAB_DEFS.length) tab = TAB_DEFS[0].id;
 
     function jx(v) {
       if (v === undefined || v === null) return '—';
@@ -260,7 +264,7 @@ export default {
       ));
       const tbody = h('tbody');
       for (const u of users) {
-        const rankSel = select(Object.values(site.ranks).map((r) => ({ value: r.key, label: rankLabel(r.key), selected: r.key === u.rank })));
+        const rankSel = select(Object.values(site.ranks).filter((r) => r.key !== 'custom').map((r) => ({ value: r.key, label: rankLabel(r.key), selected: r.key === u.rank })));
         rankSel.style.minWidth = '130px';
         rankSel.addEventListener('change', () => changeRank(u, rankSel.value));
         tbody.appendChild(h('tr', {},
@@ -794,7 +798,146 @@ export default {
       body.appendChild(h('div', { class: 'card' }, h('div', { class: 'card-title' }, h('span', { text: S.tabSettings })), content));
     }
 
+    async function tabRoles() {
+      body.innerHTML = '';
+      body.appendChild(h('div', { class: 'card' }, skeleton(4)));
+      let data;
+      try {
+        data = await get('/admin/custom-roles');
+      } catch (err) {
+        body.innerHTML = '';
+        body.appendChild(errCard(err));
+        return;
+      }
+      let roles = data.roles || [];
+      const catalog = data.catalog;
+      const labelOf = (key) => {
+        const found = [...catalog.rooms, ...catalog.actions].find((p) => p.key === key);
+        return found ? found.label : key;
+      };
+
+      async function persist(next, okMessage) {
+        try {
+          const res = await put('/admin/custom-roles', { roles: next });
+          roles = res.roles || next;
+          ctx.toast(okMessage || t('common.success', 'تمت العملية بنجاح'), 'success');
+          paint();
+          return true;
+        } catch (err) {
+          ctx.toast(err.message, 'error');
+          return false;
+        }
+      }
+
+      function openForm(index) {
+        const existing = index >= 0 ? roles[index] : null;
+        const kindS = select([
+          { value: 'role', label: 'رول في سيرفر Discord', selected: !existing || existing.kind === 'role' },
+          { value: 'user', label: 'عضو بعينه (معرّف المستخدم)', selected: Boolean(existing && existing.kind === 'user') }
+        ]);
+        const idI = input({ value: existing ? existing.id : '', placeholder: 'المعرّف (أرقام فقط)' });
+        const labelI = input({ value: existing ? existing.label : '', placeholder: 'اسم للعرض (اختياري، وإلا يظهر اسم الرول من Discord)', maxlength: 60 });
+        const checks = new Map();
+        const group = (title, list) =>
+          h(
+            'div',
+            { class: 'perm-group' },
+            h('h4', { text: title }),
+            h(
+              'div',
+              { class: 'perm-grid' },
+              ...list.map((p) => {
+                const cb = h('input', { type: 'checkbox' });
+                cb.checked = Boolean(existing && existing.perms.includes(p.key));
+                checks.set(p.key, cb);
+                return h('label', { class: 'perm-item' }, cb, h('span', { text: p.label }));
+              })
+            )
+          );
+        let m;
+        const saveBtn = h('button', {
+          class: 'btn btn-gold',
+          text: t('common.save', 'حفظ'),
+          onClick: async () => {
+            const id = idI.value.trim();
+            if (!/^\d{15,25}$/.test(id)) {
+              ctx.toast('المعرّف يجب أن يكون أرقاماً فقط (15 إلى 25 رقماً)', 'error');
+              return;
+            }
+            const entry = {
+              id,
+              kind: kindS.value,
+              label: labelI.value.trim(),
+              perms: Array.from(checks.entries()).filter(([, cb]) => cb.checked).map(([key]) => key)
+            };
+            const next = roles.slice();
+            if (existing) next[index] = entry;
+            else next.push(entry);
+            saveBtn.disabled = true;
+            const ok = await persist(next);
+            if (ok) m.close();
+            else saveBtn.disabled = false;
+          }
+        });
+        m = modal({
+          title: existing ? 'تعديل دور' : 'دور جديد',
+          wide: true,
+          content: h(
+            'div',
+            {},
+            field('نوع المعرّف', kindS),
+            field('المعرّف', idI, 'انسخه من Discord بعد تفعيل Developer Mode (Copy Role ID أو Copy User ID)'),
+            field('الاسم المعروض', labelI),
+            group('الغرف التي يراها', catalog.rooms),
+            group('ما يستطيع فعله', catalog.actions)
+          ),
+          footer: [h('button', { class: 'btn btn-ghost', text: t('common.cancel', 'إلغاء'), onClick: () => m.close() }), saveBtn]
+        });
+      }
+
+      async function removeRole(index) {
+        const entry = roles[index];
+        if (!(await confirm(`حذف هذا الدور؟ سيفقد أصحابه صلاحياته.`, { danger: true, okText: t('common.delete', 'حذف') }))) return;
+        await persist(roles.filter((_, i) => i !== index), 'تم حذف الدور');
+        return entry;
+      }
+
+      function paint() {
+        body.innerHTML = '';
+        body.appendChild(
+          h(
+            'div',
+            { class: 'card mb-2' },
+            h('div', { class: 'between' }, h('div', { class: 'card-title' }, h('span', { text: 'الأدوار المخصصة' })), h('button', { class: 'btn btn-gold', html: `${icon('plus', 16)}<span>دور جديد</span>`, onClick: () => openForm(-1) })),
+            h('p', { class: 'small muted', text: 'أضف رول Discord أو عضواً بعينه، واختر بالضبط ما يستطيع فعله في الموقع. من يملك رولين تُجمع صلاحياتهما. ويدخل الموقع من يطابق أي دور هنا حتى لو لم يكن عنده رول العضو.' })
+          )
+        );
+        if (!roles.length) {
+          body.appendChild(h('div', { class: 'card' }, emptyState('لا توجد أدوار مخصصة بعد', 'shield')));
+          return;
+        }
+        roles.forEach((r, i) => {
+          body.appendChild(
+            h(
+              'div',
+              { class: 'card mb-2' },
+              h(
+                'div',
+                { class: 'between' },
+                h('div', {}, h('strong', { text: r.label || (r.kind === 'user' ? 'عضو بعينه' : 'رول Discord') }), h('div', { class: 'small muted', text: `${r.kind === 'user' ? 'معرّف عضو' : 'معرّف رول'}: ${r.id}` })),
+                h('div', { class: 'row' }, h('button', { class: 'btn btn-ghost btn-sm', html: icon('edit', 14), title: t('common.edit', 'تعديل'), onClick: () => openForm(i) }), h('button', { class: 'btn btn-danger btn-sm', html: icon('trash', 14), title: t('common.delete', 'حذف'), onClick: () => removeRole(i) }))
+              ),
+              h('div', { class: 'row-wrap mt-1' }, ...(r.perms.length ? r.perms.map((p) => badge(labelOf(p), 'var(--gold)')) : [h('span', { class: 'small muted', text: 'بدون صلاحيات' })]))
+            )
+          );
+        });
+      }
+
+      paint();
+    }
+
     const TABS = {
+      roles: tabRoles,
       products: tabProducts,
       users: tabUsers,
       fines: tabFines,
