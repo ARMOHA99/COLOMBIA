@@ -7,19 +7,13 @@ const bus = require('../services/bus');
 const discordNotify = require('../services/discordNotify');
 const { serialize } = require('../services/orderSerialize');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRank, requireRankOr } = require('../middleware/auth');
+const { requireAuth, requirePerm } = require('../middleware/auth');
 const site = require('../../config/site');
 
-router.use(requireAuth, requireRank('shop'));
-router.use((req, res, next) => {
-  if (req.user && req.user.rank === 'member') {
-    return res.status(403).json({ error: site.strings.errors.forbidden, code: 'FORBIDDEN' });
-  }
-  return next();
-});
+router.use(requireAuth, requirePerm('view.shop', 'view.orders', 'orders.handle'));
 
 function requireShopDuty(req, res, next) {
-  if (!rolesSvc.hasShopDuty(req.user)) {
+  if (!req.perms.has('orders.handle')) {
     return res.status(403).json({ error: site.strings.errors.forbidden, code: 'FORBIDDEN' });
   }
   return next();
@@ -37,6 +31,7 @@ async function restoreStock(order) {
 
 router.get(
   '/products',
+  requirePerm('view.shop'),
   asyncHandler(async (req, res) => {
     const products = await Product.find({ active: true }).sort({ sortOrder: 1, createdAt: 1 });
     res.json({
@@ -57,6 +52,7 @@ router.get(
 
 router.post(
   '/orders',
+  requirePerm('view.shop'),
   asyncHandler(async (req, res) => {
     const { items, ingameId, note } = req.body || {};
     if (!Array.isArray(items) || !items.length || !ingameId) throw fail(400, site.strings.errors.validation, 'VALIDATION');
@@ -102,6 +98,7 @@ router.post(
 
 router.get(
   '/orders/mine',
+  requirePerm('view.orders', 'orders.handle'),
   asyncHandler(async (req, res) => {
     const orders = await Order.find({ user: req.user._id, kind: { $ne: 'internal' } }).sort({ createdAt: -1 }).limit(50);
     res.json({ orders: orders.map(serialize) });
@@ -110,8 +107,9 @@ router.get(
 
 router.get(
   '/orders',
+  requirePerm('view.orders', 'orders.handle'),
   asyncHandler(async (req, res) => {
-    const canSeeAll = rolesSvc.hasShopDuty(req.user);
+    const canSeeAll = req.perms.has('orders.handle');
     const filter = canSeeAll ? {} : { user: req.user._id };
     if (canSeeAll && req.query.status) filter.status = req.query.status;
     if (canSeeAll && req.query.kind === 'internal') filter.kind = 'internal';
@@ -157,7 +155,7 @@ router.put(
 
 router.delete(
   '/orders/:id',
-  requireRankOr('ops', 'business'),
+  requirePerm('orders.handle'),
   asyncHandler(async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
