@@ -7,6 +7,7 @@ const site = require('../../config/site');
 const { User } = require('../models');
 const discord = require('../services/discord');
 const rolesSvc = require('../services/roles');
+const permissionsSvc = require('../services/permissions');
 const { logAudit } = require('../services/audit');
 const build = require('../services/build');
 const { asyncHandler, fail } = require('../middleware/errors');
@@ -57,7 +58,8 @@ router.get(
     if (!member) return res.redirect(`${env.baseUrl}/#/login?err=notmember`);
 
     const roleIds = Array.isArray(member.roles) ? member.roles.map(String) : [];
-    const rank = rolesSvc.rankOf(roleIds);
+    await permissionsSvc.ensureCustomRoles();
+    const rank = rolesSvc.rankOf(roleIds, profile.id);
 
     const user = await User.findOneAndUpdate(
       { discordId: profile.id },
@@ -68,7 +70,7 @@ router.get(
           avatar: profile.avatar || '',
           roles: roleIds,
           rank,
-          roleLabel: await rolesSvc.labelFor(roleIds),
+          roleLabel: await rolesSvc.labelFor(roleIds, profile.id),
           rolesCheckedAt: new Date(),
           lastSeenAt: new Date()
         },
