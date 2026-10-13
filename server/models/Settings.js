@@ -16,6 +16,20 @@ const settingsSchema = new mongoose.Schema(
     staffRoleId: { type: String, default: '' },
     warnRoleId: { type: String, default: '' },
     fineRoleId: { type: String, default: '' },
+    customRoles: {
+      type: [
+        new mongoose.Schema(
+          {
+            id: { type: String, required: true },
+            kind: { type: String, enum: ['role', 'user'], default: 'role' },
+            label: { type: String, default: '', maxlength: 60 },
+            perms: { type: [String], default: [] }
+          },
+          { _id: false }
+        )
+      ],
+      default: []
+    },
     bgLogoUrl: { type: String, default: '' },
     motd: { type: String, default: site.org.motd },
     weeklyGoal: { type: Number, default: site.defaults.weeklyGoal, min: 0 },
