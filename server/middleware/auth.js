@@ -3,6 +3,7 @@
 const site = require('../../config/site');
 const { User } = require('../models');
 const rolesSvc = require('../services/roles');
+const permissionsSvc = require('../services/permissions');
 const logger = require('../services/logger');
 
 async function loadSessionUser(req, res, next) {
@@ -46,6 +47,7 @@ async function requireAuth(req, res, next) {
     return res.status(403).json({ error: req.user.banReason || site.strings.errors.forbidden, code: 'BANNED' });
   }
 
+  await permissionsSvc.ensureCustomRoles();
   const fresh = await rolesSvc.ensureFreshRoles(req.user);
   if (!fresh || fresh.rank === 'guest') {
     await killSession(req);
@@ -54,6 +56,7 @@ async function requireAuth(req, res, next) {
   req.user = fresh;
   req.userRank = fresh.rank;
   req.userRankValue = rolesSvc.rankValue(fresh.rank);
+  req.perms = permissionsSvc.permsOf(fresh);
   rolesSvc.registry.register(fresh.discordId, req.sessionID);
   return next();
 }
@@ -85,4 +88,17 @@ function requireRankOr(minRank, ...extraRanks) {
   };
 }
 
-module.exports = { loadSessionUser, requireAuth, requireRank, requireRankOr, killSession };
+function requirePerm(...perms) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: site.strings.errors.unauthorized, code: 'UNAUTHENTICATED' });
+    }
+    const set = req.perms || permissionsSvc.permsOf(req.user);
+    if (!perms.some((p) => set.has(p))) {
+      return res.status(403).json({ error: site.strings.errors.forbidden, code: 'FORBIDDEN' });
+    }
+    return next();
+  };
+}
+
+module.exports = { loadSessionUser, requireAuth, requireRank, requireRankOr, requirePerm, killSession };
