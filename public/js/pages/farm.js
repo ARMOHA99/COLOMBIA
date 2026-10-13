@@ -25,7 +25,7 @@ export default {
     const site = ctx.site;
     const strings = site.strings.farm;
     const crops = data.crops && data.crops.length ? data.crops : site.defaults.crops || [];
-    const canManage = ctx.rankOrder(ctx.user.rank) >= 3 || Boolean(data.canManage);
+    const canManage = Boolean(data.canManage);
     const unsubs = [];
     let timers = [];
     let plots = data.plots.slice();
