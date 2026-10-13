@@ -8,10 +8,10 @@ const rolesSvc = require('../services/roles');
 const duty = require('../services/duty');
 const memberCard = require('../services/memberCard');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRank } = require('../middleware/auth');
+const { requireAuth, requirePerm } = require('../middleware/auth');
 const site = require('../../config/site');
 
-router.use(requireAuth, requireRank('member'));
+router.use(requireAuth, requirePerm('view.attendance', 'members.view'));
 
 function liveMinutes(session) {
   return duty.netMinutes(session);
@@ -125,7 +125,7 @@ router.post(
 
 router.get(
   '/member/:id',
-  requireRank('ops'),
+  requirePerm('members.view'),
   asyncHandler(async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
