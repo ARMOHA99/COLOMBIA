@@ -97,13 +97,21 @@ function svgDiscord() {
 }
 
 /* ---------------- shell ---------------- */
+function can(perm) {
+  return Boolean(state.user && Array.isArray(state.user.perms) && state.user.perms.includes(perm));
+}
+
+function navVisible(item) {
+  if (item.hideWhen && item.hideWhen.some(can)) return false;
+  return (item.perms || []).some(can);
+}
+
 function buildNav() {
   const list = els.navList;
   list.innerHTML = '';
   const me = state.user;
   for (const item of state.site.nav) {
-    if (item.hideFor && item.hideFor.includes(me.rank)) continue;
-    if (!(item.allow && item.allow.includes(me.rank)) && rankOrder(me.rank) < item.minRank) continue;
+    if (!navVisible(item)) continue;
     const btn = h(
       'button',
       {
@@ -179,7 +187,10 @@ function navigate(hash) {
 }
 
 function defaultRoute() {
-  return state.site.routesByRank[state.user.rank] || '#/dashboard';
+  const visible = state.site.nav.filter(navVisible);
+  const preferred = state.site.routesByRank[state.user.rank];
+  if (preferred && visible.some((n) => n.hash === preferred)) return preferred;
+  return visible.length ? visible[0].hash : '#/dashboard';
 }
 
 async function renderRoute() {
@@ -197,8 +208,12 @@ async function renderRoute() {
     navigate(defaultRoute());
     return;
   }
-  const allowedByRank = Boolean(navItem.allow && navItem.allow.includes(state.user.rank));
-  if ((navItem.hideFor && navItem.hideFor.includes(state.user.rank)) || (!allowedByRank && rankOrder(state.user.rank) < navItem.minRank)) {
+  if (!state.site.nav.some(navVisible)) {
+    view.innerHTML = '';
+    view.appendChild(h('div', { class: 'page' }, h('div', { class: 'card' }, h('p', { text: 'لم تُمنح أي صلاحية بعد. تواصل مع الإدارة.' }))));
+    return;
+  }
+  if (!navVisible(navItem)) {
     toast(t('errors.forbidden', 'ليس لديك صلاحية لهذا الإجراء'), 'error');
     navigate(defaultRoute());
     return;
@@ -231,13 +246,6 @@ async function renderRoute() {
     return;
   }
 
-  const pageRank = mod.default.minRank !== undefined ? mod.default.minRank : navItem.minRank;
-  if (!allowedByRank && rankOrder(state.user.rank) < pageRank) {
-    toast(t('errors.forbidden', 'ليس لديك صلاحية'), 'error');
-    navigate(defaultRoute());
-    return;
-  }
-
   view.innerHTML = '';
   const container = h('div', { class: 'page' });
   view.appendChild(container);
@@ -264,6 +272,7 @@ function pageIdSafe(page) {
 function makeCtx(query, param) {
   return {
     param: param || '',
+    can,
     get user() {
       return state.user;
     },
