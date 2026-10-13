@@ -5,9 +5,9 @@ const { User, Operation, Announcement, TreasuryEntry, DutySession, Ticket, Order
 const targetSvc = require('../services/target');
 const time = require('../utils/time');
 const { asyncHandler } = require('../middleware/errors');
-const { requireAuth, requireRank } = require('../middleware/auth');
+const { requireAuth, requirePerm } = require('../middleware/auth');
 
-router.use(requireAuth, requireRank('member'));
+router.use(requireAuth, requirePerm('view.dashboard'));
 
 router.get(
   '/',
@@ -48,7 +48,7 @@ router.get(
       stats: {
         members: memberCount,
         opsWeek,
-        balance: req.user.rank === 'member' ? 0 : Math.round((income - expense) * 100) / 100,
+        balance: req.perms.has('view.treasury') ? Math.round((income - expense) * 100) / 100 : 0,
         pendingOrders,
         openTickets,
         readyPlots: plots
