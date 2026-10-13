@@ -33,7 +33,7 @@ export default {
   minRank: 2,
 
   async render(root, ctx) {
-    const isStaff = ctx.rankOrder(ctx.user.rank) >= 3;
+    const isStaff = ctx.can('members.view');
     const strings = ctx.site.strings.leaderboard;
     root.innerHTML = '';
     root.appendChild(h('div', { class: 'card' }, skeleton(8)));
