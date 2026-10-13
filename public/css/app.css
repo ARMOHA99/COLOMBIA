@@ -1189,3 +1189,10 @@ body.modal-open {
 .mv-stat-value { font-size: 20px; font-weight: 800; color: var(--gold); }
 .mv-section h4 { margin: 0 0 8px; }
 .mv-row { padding: 10px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 4px; }
+
+/* permissions editor */
+.perm-group { margin-top: 14px; }
+.perm-group h4 { margin: 0 0 8px; }
+.perm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.perm-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-soft); background: rgba(255, 255, 255, 0.03); cursor: pointer; font-size: 13px; }
+.perm-item input { width: 16px; height: 16px; accent-color: var(--gold); }
