@@ -5,6 +5,7 @@ const site = require('../../config/site');
 const env = require('../../config/env');
 const { User } = require('../models');
 const rolesSvc = require('../services/roles');
+const permissionsSvc = require('../services/permissions');
 const bus = require('../services/bus');
 const logger = require('../services/logger');
 
@@ -58,13 +59,13 @@ function storeGet(store, sid) {
 
 function roomsFor(user) {
   const rooms = [`user:${user.discordId}`, 'scope:all'];
-  const rank = user.rank;
-  const value = rolesSvc.rankValue(rank);
-  if (value >= 1) rooms.push('scope:shop');
-  if (value >= 2) rooms.push('scope:members');
-  if (value >= 3) rooms.push('scope:staff');
-  if (value >= 4) rooms.push('scope:admin');
-  if (rolesSvc.hasShopDuty(user) && !rooms.includes('scope:shop')) rooms.push('scope:shop');
+  const perms = permissionsSvc.permsOf(user);
+  const has = (...keys) => keys.some((k) => perms.has(k));
+  if (has('orders.handle')) rooms.push('scope:shop');
+  if (has('view.dashboard', 'view.operations', 'view.farm', 'view.shop', 'view.internal')) rooms.push('scope:members');
+  if (has('view.treasury')) rooms.push('scope:treasury');
+  if (has('tickets.handle', 'ops.record', 'discipline.write', 'members.view')) rooms.push('scope:staff');
+  if (has('admin.full')) rooms.push('scope:admin');
   return rooms;
 }
 
