@@ -6,10 +6,10 @@ const rolesSvc = require('../services/roles');
 const bus = require('../services/bus');
 const { logAudit } = require('../services/audit');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRank } = require('../middleware/auth');
+const { requireAuth, requirePerm } = require('../middleware/auth');
 const site = require('../../config/site');
 
-router.use(requireAuth, requireRank('member'));
+router.use(requireAuth, requirePerm('view.tickets', 'tickets.handle'));
 
 function serialize(t) {
   return {
@@ -65,7 +65,7 @@ router.get(
 
 router.get(
   '/',
-  requireRank('ops'),
+  requirePerm('tickets.handle'),
   asyncHandler(async (req, res) => {
     const filter = {};
     if (req.query.status) filter.status = req.query.status;
@@ -81,7 +81,7 @@ router.get(
 
 router.put(
   '/:id',
-  requireRank('ops'),
+  requirePerm('tickets.handle'),
   asyncHandler(async (req, res) => {
     const { status, resolution } = req.body || {};
     if (!['pending', 'approved', 'rejected'].includes(status)) throw fail(400, site.strings.errors.validation, 'VALIDATION');
