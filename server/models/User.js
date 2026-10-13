@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema(
     globalName: { type: String, default: '' },
     avatar: { type: String, default: '' },
     roles: { type: [String], default: [] },
-    rank: { type: String, enum: ['guest', 'shop', 'business', 'member', 'ops', 'admin'], default: 'guest', index: true },
+    rank: { type: String, enum: ['guest', 'shop', 'custom', 'business', 'member', 'ops', 'admin'], default: 'guest', index: true },
     inGameId: { type: String, default: '' },
     balance: { type: Number, default: 0, min: -1000000 },
     banned: { type: Boolean, default: false },
