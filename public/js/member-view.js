@@ -1,6 +1,6 @@
-import { h, badge, emptyState, modal, segTabs, skeleton } from './ui.js';
+import { h, badge, emptyState, modal, segTabs, skeleton, field, input, toast, icon } from './ui.js';
 import { money, fmtDate, fmtTime, duration } from './state.js';
-import { get } from './api.js';
+import { get, post } from './api.js';
 
 const PERIODS = [
   { id: 'week', label: 'هذا الأسبوع' },
@@ -190,6 +190,45 @@ export function openMemberView(ctx, member, { tab = 'card' } = {}) {
   );
 
   body.append(h('div', { class: 'mb-2' }, mainTabs), periodTabs, holder);
-  modal({ title: member.name, content: body, wide: true });
+  const footer = [];
+  if (ctx.can && ctx.can('hours.deduct')) {
+    footer.push(
+      h('button', {
+        class: 'btn btn-danger',
+        html: `${icon('clock', 15)}<span>خصم ساعات</span>`,
+        onClick: () => {
+          const hoursI = input({ type: 'number', min: '0', step: '0.25', placeholder: 'مثال: 2' });
+          const reasonI = input({ placeholder: 'سبب الخصم', maxlength: 300 });
+          const dm = modal({
+            title: `خصم ساعات • ${member.name}`,
+            content: h('div', {}, field('عدد الساعات المخصومة', hoursI, 'تُخصم من ساعات هذا الأسبوع ومن الساعات الإجمالية معاً'), field('السبب', reasonI)),
+            footer: [
+              h('button', { class: 'btn btn-ghost', text: 'إلغاء', onClick: () => dm.close() }),
+              h('button', {
+                class: 'btn btn-danger',
+                text: 'خصم',
+                onClick: async () => {
+                  const hours = Number(hoursI.value);
+                  if (!Number.isFinite(hours) || hours <= 0) {
+                    toast('أدخل عدد ساعات صحيح', 'error');
+                    return;
+                  }
+                  try {
+                    await post(`/admin/users/${member.id}/hours`, { hours, reason: reasonI.value.trim() });
+                    toast(`تم خصم ${hours} ساعة`, 'success');
+                    dm.close();
+                    load();
+                  } catch (err) {
+                    toast(err.message, 'error');
+                  }
+                }
+              })
+            ]
+          });
+        }
+      })
+    );
+  }
+  modal({ title: member.name, content: body, wide: true, footer: footer.length ? footer : undefined });
   load();
 }
