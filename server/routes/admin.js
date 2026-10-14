@@ -67,7 +67,11 @@ function slimUser(u) {
     banReason: u.banReason,
     inGameId: u.inGameId,
     joinedAt: u.joinedAt,
-    lastSeenAt: u.lastSeenAt
+    lastSeenAt: u.lastSeenAt,
+    customRoleId:
+      u.rank === 'custom'
+        ? ((permissionsSvc.customMatches(u.roles, u.discordId).find((c) => c.kind === 'role') || {}).id || '')
+        : ''
   };
 }
 
@@ -276,21 +280,29 @@ router.put(
     const user = await User.findById(req.params.id);
     if (!user) throw fail(404, site.strings.errors.notFound, 'NOT_FOUND');
     const nextRank = (req.body || {}).rank;
-    if (!['admin', 'ops', 'business', 'member', 'shop', 'guest'].includes(nextRank)) {
+    const customRoleList = permissionsSvc.customRoles().filter((c) => c.kind === 'role');
+    let targetRole = null;
+    if (nextRank === 'custom') {
+      const entry = customRoleList.find((c) => c.id === String((req.body || {}).customRoleId || ''));
+      if (!entry) throw fail(400, site.strings.errors.validation, 'VALIDATION');
+      targetRole = entry.id;
+    } else if (['admin', 'ops', 'business', 'member', 'shop', 'guest'].includes(nextRank)) {
+      targetRole = ROLE_BY_RANK[nextRank];
+    } else {
       throw fail(400, site.strings.errors.validation, 'VALIDATION');
     }
 
     const oldRank = user.rank;
-    const targetRole = ROLE_BY_RANK[nextRank];
 
     if (env.discord.configured) {
-      for (const [rankKey, roleId] of Object.entries(ROLE_BY_RANK)) {
+      for (const roleId of Object.values(ROLE_BY_RANK)) {
         if (!roleId) continue;
-        if (rankKey === nextRank && targetRole) {
-          await discord.addRole(user.discordId, roleId);
-        } else {
-          await discord.removeRole(user.discordId, roleId);
-        }
+        if (roleId === targetRole) await discord.addRole(user.discordId, roleId);
+        else await discord.removeRole(user.discordId, roleId);
+      }
+      for (const entry of customRoleList) {
+        if (entry.id === targetRole) await discord.addRole(user.discordId, entry.id);
+        else await discord.removeRole(user.discordId, entry.id);
       }
     }
 
@@ -525,9 +537,13 @@ router.get(
 router.get(
   '/custom-roles',
   asyncHandler(async (req, res) => {
+    await discord.fetchGuildRoles().catch(() => []);
     const s = await Settings.getInstance();
     res.json({
-      roles: (s.customRoles || []).map((r) => ({ id: r.id, kind: r.kind, label: r.label, perms: r.perms })),
+      roles: (s.customRoles || []).map((r) => {
+        const guildRole = discord.cachedRole(r.id);
+        return { id: r.id, kind: r.kind, label: r.label, discordName: guildRole ? guildRole.name : '', perms: r.perms };
+      }),
       catalog: permissionsSvc.catalog
     });
   })
