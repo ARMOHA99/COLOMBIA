@@ -4,13 +4,13 @@ const router = require('express').Router();
 const { Item } = require('../models');
 const { logAudit } = require('../services/audit');
 const { asyncHandler, fail } = require('../middleware/errors');
-const { requireAuth, requireRankOr } = require('../middleware/auth');
+const { requireAuth, requirePerm } = require('../middleware/auth');
 const site = require('../../config/site');
 
-router.use(requireAuth, requireRankOr('ops', 'business'));
+router.use(requireAuth, requirePerm('view.items', 'items.write', 'ops.record'));
 
 function canWrite(req) {
-  return req.user.rank === 'business' || (req.userRankValue || 0) >= 4;
+  return req.perms.has('items.write');
 }
 
 function requireWriter(req, res, next) {
