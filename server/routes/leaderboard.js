@@ -29,7 +29,7 @@ router.get(
         }
       ]),
       DutySession.aggregate([{ $group: { _id: '$user', minutes: { $sum: '$durationMin' } } }]),
-      User.find({ rank: { $in: ['member', 'ops', 'admin'] }, banned: false })
+      User.find({ rank: { $in: ['member', 'ops', 'admin', 'business', 'custom'] }, banned: false })
         .select('globalName username avatar rank roleLabel discordId joinedAt'),
       hoursSvc.adjustmentsByUser()
     ]);
