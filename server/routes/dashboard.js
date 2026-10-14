@@ -23,7 +23,7 @@ router.get(
 
     const [memberCount, opsWeek, balanceAgg, announcements, target, latestOps, duty, openTickets, pendingOrders, plots] =
       await Promise.all([
-        User.countDocuments({ rank: { $in: ['member', 'ops', 'admin'] }, banned: false }),
+        User.countDocuments({ rank: { $in: ['member', 'ops', 'admin', 'business', 'custom'] }, banned: false }),
         Operation.countDocuments({ date: { $gte: bounds.start, $lt: bounds.end } }),
         TreasuryEntry.aggregate([
           {
