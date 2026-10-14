@@ -17,6 +17,19 @@ export default {
     const businessOnly = !ctx.can('admin.full');
     let tab = 'products';
     let userQuery = '';
+    let customList = [];
+
+    function rankOptionsFor(u) {
+      const opts = [
+        { value: 'admin', label: rankLabel('admin') },
+        { value: 'shop', label: rankLabel('shop') },
+        ...customList.map((r) => ({ value: `custom:${r.id}`, label: r.label || r.discordName || 'رول مخصص' })),
+        { value: 'guest', label: 'بدون صلاحية' }
+      ];
+      const current = u.rank === 'custom' ? `custom:${u.customRoleId || ''}` : u.rank;
+      if (!opts.some((o) => o.value === current)) opts.unshift({ value: current, label: `${u.rankLabel || rankLabel(u.rank)} (قديمة)` });
+      return opts.map((o) => ({ ...o, selected: o.value === current }));
+    }
     let auditPage = 1;
 
     root.innerHTML = '';
@@ -264,7 +277,7 @@ export default {
       ));
       const tbody = h('tbody');
       for (const u of users) {
-        const rankSel = select(Object.values(site.ranks).filter((r) => r.key !== 'custom').map((r) => ({ value: r.key, label: rankLabel(r.key), selected: r.key === u.rank })));
+        const rankSel = select(rankOptionsFor(u));
         rankSel.style.minWidth = '130px';
         rankSel.addEventListener('change', () => changeRank(u, rankSel.value));
         tbody.appendChild(h('tr', {},
@@ -289,9 +302,10 @@ export default {
       return h('div', { class: 'table-wrap' }, h('table', {}, thead, tbody));
     }
 
-    async function changeRank(u, rank) {
+    async function changeRank(u, value) {
+      const payload = String(value).startsWith('custom:') ? { rank: 'custom', customRoleId: String(value).slice(7) } : { rank: value };
       try {
-        const res = await put(`/admin/users/${u.id}/rank`, { rank });
+        const res = await put(`/admin/users/${u.id}/rank`, payload);
         ctx.toast((res && res.message) || S.rankChanged, 'success');
       } catch (err) {
         ctx.toast(err.message, 'error');
@@ -376,6 +390,12 @@ export default {
         return;
       }
       const users = data.users || [];
+      try {
+        const cr = await get('/admin/custom-roles');
+        customList = (cr.roles || []).filter((r) => r.kind === 'role');
+      } catch (err) {
+        customList = [];
+      }
       const searchI = input({ placeholder: t('common.search', 'بحث...'), value: userQuery });
       searchI.style.maxWidth = '220px';
       searchI.addEventListener('keydown', (e) => {
