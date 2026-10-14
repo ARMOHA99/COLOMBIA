@@ -1,6 +1,7 @@
 import { h, icon, toast, modal, confirm, progressRing, badge, emptyState, skeleton, field, input, textarea, select, bindMagnetic } from '../ui.js';
 import { t, fmtDate, statusLabel, money } from '../state.js';
 import { get, post, put, del } from '../api.js';
+import { memberPicker } from '../member-picker.js';
 import * as bus from '../bus.js';
 
 function itemsEditor(catalog, initial) {
@@ -208,10 +209,7 @@ export default {
         type: 'datetime-local',
         value: op && op.date ? new Date(new Date(op.date).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
       });
-      const partS = select(
-        list.map((m) => ({ value: m.id, label: m.name, selected: op ? (op.participants || []).some((p) => p.id === m.id) : false })),
-        { multiple: true, size: 6 }
-      );
+      const picker = memberPicker(list, op ? (op.participants || []).map((p) => p.id) : []);
       const notesI = textarea({ maxlength: 1000, placeholder: t('common.notes', 'ملاحظات') });
       if (op) notesI.value = op.notes || '';
 
@@ -226,7 +224,7 @@ export default {
         field('أصناف خسرها (تُحسب قيمتها تلقائياً)', lostEd.node),
         field('أصناف ربحها (تُحسب قيمتها تلقائياً)', wonEd.node),
         field(t('common.date', 'التاريخ'), dateI),
-        field(strings.participants, partS, strings.selectParticipants),
+        field(strings.participants, picker.node, 'اضغط على كل عضو لتحديده، ويمكنك البحث بالاسم'),
         field(t('common.notes', 'ملاحظات'), notesI)
       );
 
@@ -243,7 +241,7 @@ export default {
             lossAmount: Number(lossI.value) || 0,
             lostItems: lostEd.getLines(),
             wonItems: wonEd.getLines(),
-            participants: Array.from(partS.selectedOptions).map((o) => o.value),
+            participants: picker.getValue(),
             notes: notesI.value.trim()
           };
           if (!body.title) {
