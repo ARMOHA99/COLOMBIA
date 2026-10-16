@@ -1,5 +1,5 @@
 import { h, icon, toast, countUp, progressRing, badge, emptyState, bindMagnetic, skeleton } from '../ui.js';
-import { t, money, relative, fmtTime, statusLabel, rankLabel } from '../state.js';
+import { t, money, relative, fmtTime, statusLabel, rankLabel, weekResetText } from '../state.js';
 import { get, post } from '../api.js';
 import * as bus from '../bus.js';
 
@@ -214,7 +214,7 @@ export default {
       ringHolder,
       targetBar,
       targetMeta,
-      h('div', { class: 'between mt-1' }, h('span', { class: 'small muted', text: t('target.resetInfo', 'يُعاد الضبط تلقائياً كل يوم اثنين') }), hasTreasury ? dutyTime : null)
+      h('div', { class: 'between mt-1' }, h('span', { class: 'small muted', text: weekResetText() }), hasTreasury ? dutyTime : null)
     );
 
     const annList = h('div', { class: 'col' });
