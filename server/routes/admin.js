@@ -21,6 +21,7 @@ const site = require('../../config/site');
 const rolesSvc = require('../services/roles');
 const hoursSvc = require('../services/hours');
 const scheduler = require('../services/scheduler');
+const weekConfig = require('../services/weekConfig');
 const duty = require('../services/duty');
 const targetSvc = require('../services/target');
 const farmSvc = require('../services/farm');
@@ -610,6 +611,7 @@ router.put(
       'fineRoleId',
       'motd',
       'weeklyGoal',
+      'weekStartDay',
       'lockoutEnabled',
       'lockoutStart',
       'lockoutEnd',
@@ -626,6 +628,7 @@ router.put(
       if (body[key] === undefined) continue;
       before[key] = settings[key];
       if (['weeklyGoal', 'plotsCount'].includes(key)) settings[key] = Math.max(0, parseInt(body[key], 10) || 0);
+      else if (key === 'weekStartDay') settings[key] = Math.min(6, Math.max(0, parseInt(body[key], 10) || 0));
       else if (['lockoutEnabled', 'maintenance'].includes(key)) settings[key] = Boolean(body[key]);
       else if (['categories', 'treasuryCategories'].includes(key)) {
         settings[key] = Array.isArray(body[key]) ? body[key].map((c) => String(c).slice(0, 60)).slice(0, 40) : settings[key];
@@ -641,7 +644,11 @@ router.put(
     }
     if (settings.bgLogoUrl && !/^https:\/\/[^\s"'<>]+$/.test(settings.bgLogoUrl)) settings.bgLogoUrl = '';
     await settings.save();
+    await weekConfig.refresh().catch(() => {});
     scheduler.closeLockedSessions().catch(() => {});
+    if (['weekStartDay', 'lockoutEnabled', 'lockoutStart'].some((k) => before[k] !== undefined && before[k] !== settings[k])) {
+      await targetSvc.recomputeTarget().catch(() => {});
+    }
 
     if (before.weeklyGoal !== undefined && before.weeklyGoal !== settings.weeklyGoal) await targetSvc.setWeeklyGoal(settings.weeklyGoal);
     if (before.plotsCount !== undefined && before.plotsCount !== settings.plotsCount) await farmSvc.ensurePlots();
