@@ -713,6 +713,8 @@ export default {
       const taglineI = input({ value: s.siteTagline || '' });
       const motdI = input({ value: s.motd || '' });
       const idInput = (key) => input({ value: s[key] || '', placeholder: 'المعرّف (أرقام فقط)' });
+      const weekDays = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      const weekStartS = select(weekDays.map((d, i) => ({ value: String(i), label: d, selected: i === (Number.isInteger(s.weekStartDay) ? s.weekStartDay : 1) })));
       const ordersChI = idInput('ordersChannelId');
       const internalOrdersChI = idInput('internalOrdersChannelId');
       const operationsChI = idInput('operationsChannelId');
@@ -771,6 +773,7 @@ export default {
           bgLogoUrl,
           motd: motdI.value.trim(),
           ordersChannelId: ordersChI.value.trim(),
+          weekStartDay: Number(weekStartS.value),
           internalOrdersChannelId: internalOrdersChI.value.trim(),
           operationsChannelId: operationsChI.value.trim(),
           disciplineChannelId: disciplineChI.value.trim(),
@@ -792,6 +795,7 @@ export default {
           if (ctx.site.runtime) ctx.site.runtime.logoUrl = logoUrl;
           applyBrandLogo(logoUrl);
           if (ctx.site.runtime) ctx.site.runtime.bgLogoUrl = bgLogoUrl;
+          if (ctx.site.runtime) ctx.site.runtime.weekStartDay = Number(weekStartS.value);
           setBackgroundLogo(bgLogoUrl);
           ctx.toast((res && res.message) || S.settingsSaved, 'success');
           tabSettings();
@@ -807,6 +811,7 @@ export default {
         ),
         field('شعار الموقع (يظهر مكان CO)', h('div', { class: 'row-wrap' }, logoPreview, logoFileI, logoRemoveBtn), 'PNG شفاف أو مربع يعطي أفضل شكل'),
         field('شعار الخلفية المتحركة (بدل الكوكب)', h('div', { class: 'row-wrap' }, bgPreview, bgFileI, bgRemoveBtn), 'يُفضّل PNG شفاف. اضغط "إرجاع الكوكب" ثم حفظ للعودة للشكل القديم'),                
+        field('يوم بداية الأسبوع', weekStartS, 'عنده يتصفّر الهدف الأسبوعي وساعات الأسبوع. يبدأ الأسبوع لحظة إغلاق دوام الليلة (بداية القفل الليلي) حتى لا تنقسم جلسة بين أسبوعين'),
         field('روم طلبات المتجر في Discord', ordersChI, 'انسخ معرّف الروم (Copy Channel ID). اتركه فارغاً لإيقاف الإشعارات'),
         field('روم طلبات متجر الأعضاء', internalOrdersChI, 'إن تُرك فارغاً تُرسل طلبات الأعضاء إلى روم المتجر'),
         field('روم العمليات', operationsChI, 'يرسل البوت كل عملية جديدة مع رابط مباشر لها'),
