@@ -1203,3 +1203,15 @@ body.modal-open {
 .picker-item:hover { background: rgba(255, 255, 255, 0.05); }
 .picker-item.on { background: rgba(212, 175, 55, 0.14); }
 .picker-item input { width: 16px; height: 16px; accent-color: var(--gold); }
+
+/* presence grid */
+.presence-table th, .presence-table td { text-align: center; white-space: nowrap; }
+.presence-table .pc-name { position: sticky; right: 0; background: rgba(18, 18, 20, 0.97); text-align: right; min-width: 170px; z-index: 1; }
+.pc-user { display: flex; align-items: center; gap: 10px; }
+.pc-user img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.pc-cell { font-size: 18px; font-weight: 800; }
+.pc-yes { color: var(--emerald); }
+.pc-no { color: var(--danger); }
+.pc-pending, .pc-none { color: var(--muted); }
+.presence-table .pc-today { color: var(--gold); }
+.pc-total { font-weight: 800; color: var(--gold); }
