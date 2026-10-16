@@ -2,6 +2,7 @@
 
 const farm = require('./farm');
 const target = require('./target');
+const weekConfig = require('./weekConfig');
 const roles = require('./roles');
 const logger = require('./logger');
 const { DutySession, Settings } = require('../models');
@@ -46,6 +47,7 @@ async function closeLockedSessions(now = new Date()) {
 }
 
 async function start() {
+  await weekConfig.refresh().catch((err) => logger.error('weekConfig:', err.message));
   await closeStaleDutySessions();
   await closeLockedSessions().catch((err) => logger.error('closeLockedSessions:', err.message));
   await farm.ensurePlots().catch((err) => logger.error('ensurePlots:', err.message));
@@ -54,6 +56,7 @@ async function start() {
 
   every(() => farm.checkReadiness(), 30 * 1000, 'farm');
   every(() => closeLockedSessions(), 60 * 1000, 'lockout');
+  every(() => weekConfig.refresh(), 60 * 1000, 'weekConfig');
   every(() => target.getCurrentTarget(), 60 * 1000, 'rollover');
   every(() => roles.reconcileAll(), 5 * 60 * 1000, 'reconcile');
   setTimeout(() => {
