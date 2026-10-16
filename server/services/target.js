@@ -31,11 +31,20 @@ async function getCurrentTarget({ allowRollover = true } = {}) {
   let doc = await WeeklyTarget.findOne({ scope: 'current' });
 
   if (doc && doc.weekKey !== key && allowRollover) {
-    doc.scope = 'archived';
-    doc.archivedAt = new Date();
-    await doc.save();
-    bus.emit('notify', { room: 'scope:members', event: 'target:archived', data: serialize(doc) });
-    doc = null;
+    const nowDate = new Date();
+    if (doc.weekEnd > nowDate && doc.weekStart <= nowDate) {
+      const bounds = time.weekBounds();
+      doc.weekKey = key;
+      doc.weekStart = bounds.start;
+      doc.weekEnd = bounds.end;
+      await doc.save();
+    } else {
+      doc.scope = 'archived';
+      doc.archivedAt = new Date();
+      await doc.save();
+      bus.emit('notify', { room: 'scope:members', event: 'target:archived', data: serialize(doc) });
+      doc = null;
+    }
   }
 
   if (!doc) {
