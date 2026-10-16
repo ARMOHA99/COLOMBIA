@@ -19,6 +19,7 @@ const PAGE_MODULES = {
   leaderboard: () => import('./pages/leaderboard.js'),
   admin: () => import('./pages/admin.js'),
   items: () => import('./pages/items.js'),
+  presence: () => import('./pages/presence.js'),
   shops: () => import('./pages/shops.js')
 };
 
