@@ -59,6 +59,7 @@ module.exports = {
     { id: 'shop', hash: '#/shop', label: 'المتجر', icon: 'bag', perms: ['view.shop'] },
     { id: 'orders', hash: '#/orders', label: 'الطلبات', icon: 'receipt', perms: ['view.orders'] },
     { id: 'attendance', hash: '#/attendance', label: 'الدوام', icon: 'clock', perms: ['view.attendance'] },
+    { id: 'presence', hash: '#/presence', label: 'جدول الحضور', icon: 'check', perms: ['view.presence'] },
     { id: 'operations', hash: '#/operations', label: 'العمليات', icon: 'target', perms: ['view.operations'] },
     { id: 'farm', hash: '#/farm', label: 'المزرعة', icon: 'leaf', perms: ['view.farm'] },
     { id: 'treasury', hash: '#/treasury', label: 'الخزينة', icon: 'coins', perms: ['view.treasury'] },
