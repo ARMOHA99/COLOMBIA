@@ -21,6 +21,7 @@ router.get(
         siteTagline: s.siteTagline,
         logoUrl: s.logoUrl || '',
         bgLogoUrl: s.bgLogoUrl || '',
+        weekStartDay: Number.isInteger(s.weekStartDay) ? s.weekStartDay : 1,
         motd: s.motd,
         lockoutEnabled: s.lockoutEnabled,
         lockoutStart: s.lockoutStart,
@@ -67,6 +68,7 @@ router.use('/shop', require('./shop'));
 router.use('/internal', require('./internalShop'));
 router.use('/leaderboard', require('./leaderboard'));
 router.use('/items', require('./items'));
+router.use('/presence', require('./presence'));
 router.use('/admin', require('./admin'));
 
 module.exports = router;
