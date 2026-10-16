@@ -9,6 +9,7 @@ const settingsSchema = new mongoose.Schema(
     siteName: { type: String, default: site.org.nameAr },
     siteTagline: { type: String, default: site.org.tagline },
     logoUrl: { type: String, default: '' },
+    weekStartDay: { type: Number, default: 1, min: 0, max: 6 },
     ordersChannelId: { type: String, default: '' },
     internalOrdersChannelId: { type: String, default: '' },
     operationsChannelId: { type: String, default: '' },
