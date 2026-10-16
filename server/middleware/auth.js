@@ -4,6 +4,7 @@ const site = require('../../config/site');
 const { User } = require('../models');
 const rolesSvc = require('../services/roles');
 const permissionsSvc = require('../services/permissions');
+const weekConfig = require('../services/weekConfig');
 const logger = require('../services/logger');
 
 async function loadSessionUser(req, res, next) {
@@ -48,6 +49,7 @@ async function requireAuth(req, res, next) {
   }
 
   await permissionsSvc.ensureCustomRoles();
+  await weekConfig.ensure();
   const fresh = await rolesSvc.ensureFreshRoles(req.user);
   if (!fresh || fresh.rank === 'guest') {
     await killSession(req);
