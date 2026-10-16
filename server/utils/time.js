@@ -34,19 +34,37 @@ function fromZoned(zonedDate) {
   return new Date(ms);
 }
 
+let weekCfg = { day: 1, minutes: 0 };
+
+function setWeekConfig(cfg = {}) {
+  const day = Number(cfg.day);
+  const minutes = Number(cfg.minutes);
+  weekCfg = {
+    day: Number.isInteger(day) && day >= 0 && day <= 6 ? day : 1,
+    minutes: Number.isFinite(minutes) && minutes >= 0 && minutes < 1440 ? Math.floor(minutes) : 0
+  };
+}
+
+function getWeekConfig() {
+  return { ...weekCfg };
+}
+
 function weekBounds(date = new Date()) {
   const z = toZoned(date);
-  const day = (z.getUTCDay() + 6) % 7;
-  const startZoned = new Date(Date.UTC(z.getUTCFullYear(), z.getUTCMonth(), z.getUTCDate() - day));
+  const minutesNow = z.getUTCHours() * 60 + z.getUTCMinutes();
+  let diff = (z.getUTCDay() - weekCfg.day + 7) % 7;
+  if (diff === 0 && minutesNow < weekCfg.minutes) diff = 7;
+  const startZoned = new Date(
+    Date.UTC(z.getUTCFullYear(), z.getUTCMonth(), z.getUTCDate() - diff, Math.floor(weekCfg.minutes / 60), weekCfg.minutes % 60)
+  );
   const endZoned = new Date(startZoned.getTime() + 7 * 24 * 60 * 60 * 1000);
   return { start: fromZoned(startZoned), end: fromZoned(endZoned) };
 }
 
 function weekKey(date = new Date()) {
   const z = toZoned(weekBounds(date).start);
-  const jan1 = Date.UTC(z.getUTCFullYear(), 0, 1);
-  const week = Math.floor((z.getTime() - jan1) / (7 * 24 * 3600 * 1000)) + 1;
-  return `${z.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${z.getUTCFullYear()}-${pad(z.getUTCMonth() + 1)}-${pad(z.getUTCDate())}`;
 }
 
 function hhmm(date = new Date()) {
@@ -125,6 +143,8 @@ module.exports = {
   fromZoned,
   weekBounds,
   weekKey,
+  setWeekConfig,
+  getWeekConfig,
   hhmm,
   minutesOfDay,
   toMinutes,
