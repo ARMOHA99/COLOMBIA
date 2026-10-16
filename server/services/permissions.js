@@ -19,6 +19,7 @@ const MEMBER = [
 ];
 const OPS = [
   ...MEMBER,
+  'view.presence',
   'view.shop',
   'view.orders',
   'view.treasury',
