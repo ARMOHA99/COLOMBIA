@@ -5,6 +5,7 @@ module.exports = {
     { key: 'view.dashboard', label: 'الداشبورد' },
     { key: 'view.card', label: 'بطاقتي' },
     { key: 'view.attendance', label: 'الدوام (تسجيل دخول وخروج واستراحة)' },
+    { key: 'view.presence', label: 'جدول الحضور (الأعضاء والأيام)' },
     { key: 'view.operations', label: 'العمليات (عرض)' },
     { key: 'view.farm', label: 'المزرعة (عرض)' },
     { key: 'view.internal', label: 'المتجر الداخلي (طلب الأصناف)' },
