@@ -21,6 +21,13 @@ export function statusLabel(group, key) {
   return (s && s[key]) || key;
 }
 
+const WEEK_DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+export function weekResetText() {
+  const d = state.site && state.site.runtime && state.site.runtime.weekStartDay;
+  return `يُعاد الضبط تلقائياً كل يوم ${WEEK_DAYS[Number.isInteger(d) && d >= 0 && d <= 6 ? d : 1]}`;
+}
+
 export function rankLabel(rank) {
   const names = state.site && state.site.rankNames;
   if (names && names[rank]) return names[rank];
