@@ -1,5 +1,5 @@
 import { h, icon, toast, modal, confirm, progressRing, badge, emptyState, skeleton, field, input, textarea, select, bindMagnetic } from '../ui.js';
-import { t, fmtDate, statusLabel, money } from '../state.js';
+import { t, fmtDate, statusLabel, money, weekResetText } from '../state.js';
 import { get, post, put, del } from '../api.js';
 import { memberPicker } from '../member-picker.js';
 import * as bus from '../bus.js';
@@ -177,7 +177,7 @@ export default {
         'div',
         { class: 'card-title' },
         h('span', { text: t('target.title', 'الهدف الأسبوعي') }),
-        h('span', { class: 'small muted', text: t('target.resetInfo', 'يُعاد الضبط تلقائياً كل يوم اثنين') })
+        h('span', { class: 'small muted', text: weekResetText() })
       ),
       ringHolder,
       bar,
