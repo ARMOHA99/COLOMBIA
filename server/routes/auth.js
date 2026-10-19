@@ -10,6 +10,7 @@ const rolesSvc = require('../services/roles');
 const permissionsSvc = require('../services/permissions');
 const { logAudit } = require('../services/audit');
 const build = require('../services/build');
+const logger = require('../services/logger');
 const { asyncHandler, fail } = require('../middleware/errors');
 const { requireAuth, killSession } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/security');
@@ -41,8 +42,13 @@ router.get(
   authLimiter,
   asyncHandler(async (req, res) => {
     const { code, state } = req.query;
-    if (!code || !state || !req.session || state !== req.session.oauthState) {
-      throw fail(400, site.strings.auth.oauthFailed, 'OAUTH_STATE');
+    const stored = req.session && req.session.oauthState;
+    if (!code || !state || !stored || state !== stored) {
+      if (req.session && req.session.userId) return res.redirect(`${env.baseUrl}/`);
+      logger.warn(
+        `OAUTH_STATE: session=${Boolean(req.session)} code=${Boolean(code)} queryState=${Boolean(state)} storedState=${Boolean(stored)} cookie=${Boolean(req.headers.cookie)} ua=${String(req.headers['user-agent'] || '').slice(0, 80)}`
+      );
+      return res.redirect(`${env.baseUrl}/#/login?err=state`);
     }
     delete req.session.oauthState;
     await saveSession(req);
