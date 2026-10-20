@@ -121,11 +121,12 @@ async function main() {
   rolesSvc.registry.init(store);
 
   await scheduler.start();
-  await startBot();
 
   server.listen(env.port, () => {
     logger.info(`${site.org.name} portal listening on :${env.port} (${env.baseUrl})`);
   });
+
+  startBot().catch((err) => logger.error('Discord bot failed to start:', err && err.message ? err.message : err));
 
   let shuttingDown = false;
   const shutdown = async (signal) => {
