@@ -54,6 +54,7 @@ router.get(
     await saveSession(req);
 
     const token = await discord.exchangeCode(String(code));
+    if (token && token.error === 'rate') return res.redirect(`${env.baseUrl}/#/login?err=rate`);
     if (!token) throw fail(502, site.strings.auth.oauthFailed, 'OAUTH_TOKEN');
 
     const profile = await discord.fetchOAuthUser(token.access_token);
