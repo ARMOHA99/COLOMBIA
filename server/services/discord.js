@@ -5,7 +5,15 @@ const logger = require('./logger');
 
 const API = 'https://discord.com/api/v10';
 
-async function discordFetch(path, { method = 'GET', token, authType = 'Bot', body, form } = {}) {
+let blockedUntil = 0;
+let backoffStep = 0;
+
+function isRateLimited() {
+  return Date.now() < blockedUntil;
+}
+
+async function discordFetch(path, { method = 'GET', token, authType = 'Bot', body, form, bypass = false } = {}) {
+  if (!bypass && isRateLimited()) return { ok: false, status: 429, data: {}, rateLimited: true };
   const headers = {};
   if (token) headers.Authorization = `${authType} ${token}`;
   let payload = body;
@@ -17,6 +25,15 @@ async function discordFetch(path, { method = 'GET', token, authType = 'Bot', bod
     payload = JSON.stringify(body);
   }
   const res = await fetch(`${API}${path}`, { method, headers, body: payload });
+  if (res.status === 429) {
+    const retryAfterMs = (Number(res.headers && res.headers.get && res.headers.get('retry-after')) || 0) * 1000;
+    backoffStep = Math.min(backoffStep + 1, 6);
+    const waitMs = Math.min(Math.max(retryAfterMs, 60000 * 2 ** (backoffStep - 1)), 30 * 60 * 1000);
+    blockedUntil = Date.now() + waitMs;
+    logger.warn(`Discord rate limited (429) on ${method} ${path.split('?')[0]} - pausing Discord calls for ${Math.round(waitMs / 1000)}s`);
+    return { ok: false, status: 429, data: {}, rateLimited: true };
+  }
+  if (res.ok) backoffStep = 0;
   if (res.status === 204) return { ok: true, status: 204, data: null };
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
@@ -26,6 +43,7 @@ async function exchangeCode(code) {
   const res = await discordFetch('/oauth2/token', {
     method: 'POST',
     authType: 'Bearer',
+    bypass: true,
     form: {
       client_id: env.discord.clientId,
       client_secret: env.discord.clientSecret,
@@ -36,20 +54,21 @@ async function exchangeCode(code) {
   });
   if (!res.ok) {
     logger.error('OAuth token exchange failed:', res.status, JSON.stringify(res.data));
-    return null;
+    return res.status === 429 ? { error: 'rate' } : null;
   }
   return res.data;
 }
 
 async function fetchOAuthUser(accessToken) {
-  const res = await discordFetch('/users/@me', { token: accessToken, authType: 'Bearer' });
+  const res = await discordFetch('/users/@me', { token: accessToken, authType: 'Bearer', bypass: true });
   return res.ok ? res.data : null;
 }
 
 async function fetchOAuthGuildMember(accessToken) {
   const res = await discordFetch(`/users/@me/guilds/${env.discord.guildId}/member`, {
     token: accessToken,
-    authType: 'Bearer'
+    authType: 'Bearer',
+    bypass: true
   });
   if (res.status === 404) return null;
   return res.ok ? res.data : null;
@@ -95,7 +114,9 @@ let rolesCache = { at: 0, list: [] };
 
 async function fetchGuildRoles() {
   if (!env.discord.configured) return [];
-  if (Date.now() - rolesCache.at < 10 * 60 * 1000 && rolesCache.list.length) return rolesCache.list;
+  const ttl = rolesCache.list.length ? 10 * 60 * 1000 : 2 * 60 * 1000;
+  if (Date.now() - rolesCache.at < ttl) return rolesCache.list;
+  rolesCache.at = Date.now();
   try {
     const res = await discordFetch(`/guilds/${env.discord.guildId}/roles`, { token: env.discord.token });
     if (res.ok && Array.isArray(res.data)) {
@@ -154,6 +175,7 @@ module.exports = {
   fetchAllGuildMembers,
   getMemberRoles,
   memberName,
+  isRateLimited,
   fetchGuildRoles,
   cachedRole,
   sendChannelMessage,
