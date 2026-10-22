@@ -70,6 +70,7 @@ function showLogin(reason) {
   else if (!message && err === 'notmember') message = site.strings.auth.notMember;
   else if (!message && err === 'banned') message = site.strings.errors.forbidden;
   else if (!message && err === 'state') message = site.strings.auth.stateExpired;
+  else if (!message && err === 'rate') message = site.strings.auth.rateLimited;
 
   const initials = (site.org.initials || site.org.name || 'CO').slice(0, 3);
   const card = h(
